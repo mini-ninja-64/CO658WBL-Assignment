@@ -6,7 +6,22 @@
 #include <cstddef>
 #include <iostream>
 #include <optional>
+#include <tuple>
+#include <span>
 
+// TODO: move to utils
+template<typename T>
+std::string joinString(const std::span<T>& elements, const std::string delimeter) {
+    std::string concatenatedString;
+    size_t index = 0;
+    for (const auto &element: elements) {
+        concatenatedString += std::to_string(element);
+        if(index + 1 < elements.size()) concatenatedString.append(delimeter);
+        index++;
+    }
+
+    return concatenatedString;
+}
 
 template<typename KEY_TYPE, typename VALUE_TYPE>
 class Node {
@@ -16,8 +31,28 @@ private:
     std::vector<Node<KEY_TYPE, VALUE_TYPE>*> children = {};
     std::vector<VALUE_TYPE> values = {};
     bool leaf = false;
+
+    std::string recurseChildrenGraphViz(const std::string& nodeName,
+                                         Node<KEY_TYPE,VALUE_TYPE>* node,
+                                         int& currentIndex) {
+        std::string labelText = "Records: [ " + joinString<KEY_TYPE>(node->getRecords(), ", ") + " ]";
+        if(node->isLeaf()) labelText += "\nValues: { " + joinString<KEY_TYPE>(node->getValues(), ", ") + " }";
+
+        std::string labelledNode = nodeName + " [ label=\"" + labelText + "\" ];\n";
+        std::string graphVizCode = labelledNode;
+
+        for (auto& child : node->getChildren()) {
+            std::string childNodeName = "childNode" + std::to_string(currentIndex);
+            currentIndex++;
+            graphVizCode += recurseChildrenGraphViz(childNodeName, child, currentIndex);
+            graphVizCode += nodeName + " -> ";
+            graphVizCode += childNodeName + "\n";
+        }
+        return graphVizCode;
+    }
+
 public:
-    Node(const Node&) = delete;
+    Node(const Node&) = default;
     Node() = default;
     Node(Node<KEY_TYPE, VALUE_TYPE>* parent,
          const std::vector<KEY_TYPE> &records,
@@ -80,42 +115,19 @@ public:
         return nextChild->findParentAndLeaf(key);
     }
 
-    void addChild(Node<KEY_TYPE, VALUE_TYPE>* child) {
-        children.push_back(child);
-        child->parent = this;
-    }
-
     void addChild(size_t position, Node<KEY_TYPE, VALUE_TYPE>* child) {
         children.insert(children.begin() + position, child);
         child->parent = this;
     }
+
+    std::string renderGraphVizView() {
+        std::string graphVizDoc = "digraph G {\n";
+        int nodeIndex = 0;
+        graphVizDoc += recurseChildrenGraphViz("root", this, nodeIndex);
+        graphVizDoc += "}";
+        return graphVizDoc;
+    }
 };
-
-// https://en.wikipedia.org/wiki/B%2B_tree
-// https://www.cs.usfca.edu/~galles/visualization/BPlusTree.html
-
-// TREE_ORDER = order / branching factor
-// Branching factor is the capacity of internal nodes, the maximum number of children
-
-// For all nodes with children:
-//  minimum children = minimum records + 1
-//  maximum records = maximum records + 1
-
-// Root Node (no children)
-//  minimum records = 0
-//  maximum records = TREE_ORDER - 1
-
-// Root Node
-//  minimum records = 2
-//  maximum records = TREE_ORDER - 1
-
-// Internal Node
-//  minimum records = roundUp(TREE_ORDER/2) - 1
-//  maximum records = TREE_ORDER - 1
-
-// Leaf Node (no children)
-//  minimum records = roundUp(TREE_ORDER/2) - 1
-//  maximum records = TREE_ORDER - 1
 
 template<size_t ORDER, typename K, typename V>
 class BPlusTree {
@@ -148,15 +160,13 @@ public:
                                                    {},
                                                    false);
 
-                // TODO: wont work for all cases?
+                // TODO: will this work for all cases?
                 root.getRecords().clear();
                 root.getRecords().push_back(keyToPropogateUpwards);
                 root.getChildren().clear();
-                root.addChild(newLeftParent);
-                root.addChild(newRightParent);
+                root.addChild(0, newLeftParent);
+                root.addChild(1, newRightParent);
             } else {
-                // create
-                [[maybe_unused]]
                 auto keyToPropagate = parentNode->getRecords()[leftSize];
 
                 auto newRightParent = new Node<K,V>(parentNode->getParent(),
@@ -171,7 +181,7 @@ public:
         }
     }
 
-    void insert(K key, [[maybe_unused]] V value) {
+    void insert(K key, V value) {
         // Jump to the leaf
         auto [ parent, leaf ] = root.findParentAndLeaf(key);
 
@@ -181,58 +191,55 @@ public:
             insertIndex++;
         }
         leaf->getRecords().insert(leaf->getRecords().begin()+insertIndex, key);
+        leaf->getValues().insert(leaf->getValues().begin()+insertIndex, value);
 
         if(leaf->numberOfRecords() >= ORDER) {
             size_t leftSize = ORDER/2;
 
-            if(parent == nullptr) { // root node
-                auto leftLeaf = new Node<K, V>(&root, {leaf->getRecords().begin(), leaf->getRecords().begin() + leftSize}, {}, {}, true);
-                auto rightLeaf = new Node<K, V>(&root, {leaf->getRecords().begin() + leftSize, leaf->getRecords().end()}, {}, {}, true);
+            if(parent == nullptr) { // root node, special case
+                auto leftLeaf = new Node<K, V>(&root,
+                                               {leaf->getRecords().begin(), leaf->getRecords().begin() + leftSize},
+                                               {},
+                                               {leaf->getValues().begin(), leaf->getValues().begin() + leftSize},
+                                               true);
+                auto rightLeaf = new Node<K, V>(&root,
+                                                {leaf->getRecords().begin() + leftSize, leaf->getRecords().end()},
+                                                {},
+                                                {leaf->getValues().begin()+ leftSize, leaf->getValues().end()},
+                                                true);
                 root.getRecords().clear();
                 root.getRecords().push_back(rightLeaf->getRecords()[0]);
-                root.addChild(leftLeaf);
-                root.addChild(rightLeaf);
+                root.getValues().clear();
+                root.addChild(0, leftLeaf);
+                root.addChild(1, rightLeaf);
+                root.setLeaf(false);
             } else { // normal case, split the leaf to the right
-                auto newRightLeaf = new Node<K, V>(parent, {leaf->getRecords().begin() + leftSize, leaf->getRecords().end()}, {}, {}, true);
+                auto newRightLeaf = new Node<K, V>(parent,
+                                                   {leaf->getRecords().begin() + leftSize, leaf->getRecords().end()},
+                                                   {},
+                                                   {leaf->getValues().begin() + leftSize, leaf->getValues().end()},
+                                                   true);
                 auto keyToPropagate = leaf->getRecords()[leftSize];
                 leaf->getRecords().erase(leaf->getRecords().begin() + leftSize, leaf->getRecords().end());
+                leaf->getValues().erase(leaf->getValues().begin() + leftSize, leaf->getValues().end());
                 addChildToParent(parent, newRightLeaf, keyToPropagate);
             }
         }
     }
 
+    std::optional<std::reference_wrapper<V>> find(K key) {
+        // Jump to the leaf
+        auto leaf = root.findLeaf(key);
+
+        int index = 0;
+        for (const auto &record: leaf->getRecords()) {
+            if (record == key) return leaf->getValues()[index];
+            index++;
+        }
+        return std::nullopt;
+    }
+
     Node<K, V> &getRoot() {
         return root;
-    }
-
-    std::string generateGraphVizNode(const std::string& nodeName, Node<K,V>* node) {
-        std::string graphVizNode = nodeName + " [ label=\"[";
-        for (const auto &record: node->getRecords()) {
-            graphVizNode += std::to_string(record) + ",";
-        }
-        graphVizNode += "]\" ];\n";
-
-        return graphVizNode;
-    }
-
-    std::string renderGraphVizChunk(const std::string& nodeName, Node<K,V>* node, int& currentIndex) {
-        std::string graphVizCode = generateGraphVizNode(nodeName, node);
-
-        for (auto& child : node->getChildren()) {
-            std::string childNodeName = "childNode" + std::to_string(currentIndex);
-            currentIndex++;
-            graphVizCode += renderGraphVizChunk(childNodeName, child, currentIndex);
-            graphVizCode += nodeName + " -> ";
-            graphVizCode += childNodeName + "\n";
-        }
-        return graphVizCode;
-    }
-
-    std::string renderGraphViz() {
-        std::string graphVizDoc = "digraph G {\n";
-        int nodeIndex = 0;
-        graphVizDoc += renderGraphVizChunk("root", &root, nodeIndex);
-        graphVizDoc += "}";
-        return graphVizDoc;
     }
 };
