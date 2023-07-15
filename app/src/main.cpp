@@ -4,6 +4,7 @@
 #include <set>
 #include <unordered_set>
 #include <chrono>
+#include <random>
 #include "Database.hpp"
 
 #define RECIPES_PER_INGREDIENT 99999
@@ -13,9 +14,38 @@
 
 #ifndef TESTING
 
+#define ENTRIES_COUNT 1000
+
+auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+std::default_random_engine randomEngine(now);
+std::uniform_int_distribution<uint32_t> randomEntry(0, ENTRIES_COUNT);
+std::uniform_int_distribution<uint32_t> randomValue(0, 0xFFFFFFFF);
+
 int main() {
-    Database database(std::filesystem::path("./test.db"));
-//    database;
+    BPlusTree<50, uint32_t,  uint32_t> testTree;
+    std::cout << "priming data" << std::endl;
+    for (int i = 0; i < ENTRIES_COUNT; ++i) {
+        auto itemValue = randomValue(randomEngine);
+        testTree.insert(i, itemValue);
+    }
+    std::cout << "data primed" << std::endl;
+
+    auto itemKey = randomEntry(randomEngine);
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto itemValue = testTree.find(itemKey);
+    auto t2 = std::chrono::high_resolution_clock::now();
+
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count();
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
+    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
+    std::cout << "It took "
+        << nanoseconds << "ns, " << microseconds << "us, " << milliseconds << "ms to find '"
+        << itemKey
+        << "': '"
+        << itemValue->get()
+        << "' from "
+        << ENTRIES_COUNT << " entries"
+        << std::endl;
 }
 
 #endif

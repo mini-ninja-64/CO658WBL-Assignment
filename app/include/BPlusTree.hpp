@@ -11,18 +11,19 @@
 
 // TODO: move to utils
 template<typename T>
-std::string joinString(const std::span<T>& elements, const std::string delimeter) {
+std::string joinString(const std::span<T>& elements, const std::string& delimiter) {
     std::string concatenatedString;
     size_t index = 0;
     for (const auto &element: elements) {
         concatenatedString += std::to_string(element);
-        if(index + 1 < elements.size()) concatenatedString.append(delimeter);
+        if(index + 1 < elements.size()) concatenatedString.append(delimiter);
         index++;
     }
 
     return concatenatedString;
 }
 
+// TODO: Could be 2 seperate node impl extending abstract node, internal node & leaf
 template<typename KEY_TYPE, typename VALUE_TYPE>
 class Node {
 private:
@@ -52,6 +53,11 @@ private:
     }
 
 public:
+    // TODO: should probs be handled as optionals or something,
+    //       no one should be exposed to raw unchecked ptr, they cant be trusted
+    Node<KEY_TYPE, VALUE_TYPE>* nextLeaf = nullptr;
+    Node<KEY_TYPE, VALUE_TYPE>* previousLeaf = nullptr;
+
     Node(const Node&) = default;
     Node() = default;
     Node(Node<KEY_TYPE, VALUE_TYPE>* parent,
@@ -127,8 +133,19 @@ public:
         graphVizDoc += "}";
         return graphVizDoc;
     }
+
+    std::optional<size_t> findRecord(const KEY_TYPE &key) const {
+        // TODO: already sorted, search algo time :sunglasses:
+        size_t index = 0;
+        for (const auto& record: records) {
+            if(key == record) return index;
+            index++;
+        }
+        return std::nullopt;
+    }
 };
 
+// TODO: Obviously destructor
 template<size_t ORDER, typename K, typename V>
 class BPlusTree {
 private:
@@ -185,7 +202,8 @@ public:
         // Jump to the leaf
         auto [ parent, leaf ] = root.findParentAndLeaf(key);
 
-        int insertIndex = 0;
+        // TODO: could be broken out somewhere and shared with findRecord
+        size_t insertIndex = 0;
         for (const auto& record: leaf->getRecords()) {
             if(key < record) break;
             insertIndex++;
@@ -214,28 +232,79 @@ public:
                 root.addChild(1, rightLeaf);
                 root.setLeaf(false);
             } else { // normal case, split the leaf to the right
-                auto newRightLeaf = new Node<K, V>(parent,
-                                                   {leaf->getRecords().begin() + leftSize, leaf->getRecords().end()},
-                                                   {},
-                                                   {leaf->getValues().begin() + leftSize, leaf->getValues().end()},
-                                                   true);
+                auto newLeaf = new Node<K, V>(parent,
+                                              {leaf->getRecords().begin() + leftSize, leaf->getRecords().end()},
+                                              {},
+                                              {leaf->getValues().begin() + leftSize, leaf->getValues().end()},
+                                              true);
                 auto keyToPropagate = leaf->getRecords()[leftSize];
                 leaf->getRecords().erase(leaf->getRecords().begin() + leftSize, leaf->getRecords().end());
                 leaf->getValues().erase(leaf->getValues().begin() + leftSize, leaf->getValues().end());
-                addChildToParent(parent, newRightLeaf, keyToPropagate);
+
+                auto nextLeaf = leaf->nextLeaf;
+                newLeaf->nextLeaf = nextLeaf;
+                if(nextLeaf != nullptr) nextLeaf->previousLeaf = newLeaf;
+
+                newLeaf->previousLeaf = nextLeaf;
+                leaf->nextLeaf = newLeaf;
+
+                addChildToParent(parent, newLeaf, keyToPropagate);
             }
+        }
+    }
+
+    // Something to consider:
+    // To delete a value, just find the appropriate leaf and delete the unwanted value from that leaf.
+    // That’s all there is to it. (Yes, technically we could end up violating some of the invariants of a B+
+    // tree. That’s okay because in practice we get way more insertions than deletions so something will
+    // quickly replace whatever we delete.)
+    // Reminder: We never delete inner node keys because they are only there for search and not to
+    // hold data.
+    // - Jenny Huang
+    // https://cs186berkeley.net/sp21/resources/static/notes/n03-B+Trees.pdf
+
+    // Traditional purist approach, i suppose:
+    // https://cs.stackexchange.com/questions/63170/is-promoting-a-key-a-part-of-deleting-internal-node-key-in-b-tree/119714#119714?newreg=59be1fc8c4b3475e86683bab60b1f9e1
+    void remove(K key) {
+        auto [ parent, leaf ] = root.findParentAndLeaf(key);
+        auto recordIndex = leaf->findRecord(key);
+        if(!recordIndex.has_value()) return; // Key is not present, nothing to do except return early
+
+        // Note: Some B+ tree implementations choose to propagate upwards any key removals,
+        //       this is an interesting choice and in my opinion does not serve much purpose,
+        //       since the internal nodes are only used for searching, aligning a non-broken
+        //       index won't improve search performance, but does cost budget to carry out.
+        //       (at least with my current understanding)
+        size_t minimumNodeSize = ORDER/2;
+        leaf->getRecords().erase(leaf->getRecords().begin() + recordIndex.value());
+        leaf->getValues().erase(leaf->getValues().begin() + recordIndex.value());
+
+        // Handling Tree Underflow
+        // Note: Some B+ tree implementations choose to ignore tree underflow's, the argument being
+        //       that in actual systems the amount of inbound data far outweighs the number of deletions
+        //       so anything deleted will likely be quickly replaced anyway.
+        if (leaf->numberOfRecords() < minimumNodeSize) {
+            // attempt to borrow from sibling until distribution is safe & update parent
+            auto nextLeafSize = leaf->nextLeaf == nullptr ? 0 : leaf->nextLeaf->numberOfRecords();
+            auto previousLeafSize = leaf->previousLeaf == nullptr ? 0 : leaf->previousLeaf->numberOfRecords();
+            if (leaf->numberOfRecords() + nextLeafSize >= ORDER) {
+                // borrow from next leaf to prevent underflow
+                std::cout << "borrowing from nextLeaf" << std::endl;
+            } else if (leaf->numberOfRecords() + previousLeafSize >= ORDER) {
+                // borrow from previous leaf to prevent underflow
+                std::cout << "borrowing from previousLeaf" << std::endl;
+            } else {
+                // Cannot borrow from a sibling we must do a full re-balance
+            }
+
         }
     }
 
     std::optional<std::reference_wrapper<V>> find(K key) {
         // Jump to the leaf
         auto leaf = root.findLeaf(key);
-
-        int index = 0;
-        for (const auto &record: leaf->getRecords()) {
-            if (record == key) return leaf->getValues()[index];
-            index++;
-        }
+        auto recordIndex = leaf->findRecord(key);
+        if (recordIndex.has_value()) return leaf->getValues()[recordIndex.value()];
         return std::nullopt;
     }
 

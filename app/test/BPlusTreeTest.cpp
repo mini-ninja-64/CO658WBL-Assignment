@@ -110,13 +110,17 @@ TEST(BPlusTree, CorrectlyFindsItemsInATree) {
     ASSERT_EQ(testTree.find(2)->get(), 100);
     ASSERT_EQ(testTree.find(4)->get(), 200);
     ASSERT_EQ(testTree.find(7)->get(), 350);
-    ASSERT_FALSE(testTree.find(9));
+    ASSERT_FALSE(testTree.find(9).has_value());
 }
 
 TEST(BPlusTree, CorrectlyDeletesElementOnlyPresentInLeafNode) {
     auto testTree = createTreeWithKeyAsValue<4, int>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+    ASSERT_TRUE(testTree.find(6).has_value());
+    testTree.remove(6);
+    ASSERT_FALSE(testTree.find(6).has_value());
 
-    std::cout << testTree.getRoot().renderGraphVizView();
+    testTree.insert(6, 6);
+    std::cout << testTree.getRoot().renderGraphVizView() << std::endl;
 }
 
 TEST(Node, CorrectlyFindsAMatchingLeaf) {
