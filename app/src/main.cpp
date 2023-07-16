@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include <chrono>
 #include <random>
-#include "Database.hpp"
+#include "BipartiteGraphDatabase.hpp"
 
 #define RECIPES_PER_INGREDIENT 99999
 
@@ -14,7 +14,7 @@
 
 #ifndef TESTING
 
-#define ENTRIES_COUNT 1000
+#define ENTRIES_COUNT 10000000
 
 auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 std::default_random_engine randomEngine(now);
@@ -22,11 +22,14 @@ std::uniform_int_distribution<uint32_t> randomEntry(0, ENTRIES_COUNT);
 std::uniform_int_distribution<uint32_t> randomValue(0, 0xFFFFFFFF);
 
 int main() {
-    BPlusTree<50, uint32_t,  uint32_t> testTree;
+    BPlusTree<1000, uint32_t,  uint32_t> testTree;
     std::cout << "priming data" << std::endl;
     for (int i = 0; i < ENTRIES_COUNT; ++i) {
         auto itemValue = randomValue(randomEngine);
         testTree.insert(i, itemValue);
+        if (i == 1 * (ENTRIES_COUNT/4)) std::cout << "25%" << std::endl;
+        if (i == 2 * (ENTRIES_COUNT/4)) std::cout << "50%" << std::endl;
+        if (i == 3 * (ENTRIES_COUNT/4)) std::cout << "75%" << std::endl;
     }
     std::cout << "data primed" << std::endl;
 

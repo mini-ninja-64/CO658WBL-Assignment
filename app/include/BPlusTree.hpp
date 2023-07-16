@@ -134,12 +134,32 @@ public:
         return graphVizDoc;
     }
 
+    // For sufficiently small datasets binary search will actually be slower than a brute force,
+    // because of this we can have a small optimisation for data under a certain threshold
+    // this is of course highly dependent on the computer.
+
+#define BINARY_SEARCH_THRESHOLD 500
     std::optional<size_t> findRecord(const KEY_TYPE &key) const {
-        // TODO: already sorted, search algo time :sunglasses:
-        size_t index = 0;
-        for (const auto& record: records) {
-            if(key == record) return index;
-            index++;
+        size_t lowerBound = 0;
+        size_t upperBound = records.size() - 1;
+
+        if (records.size() <= BINARY_SEARCH_THRESHOLD) {
+            for (size_t i = 0; i < records.size(); i++) {
+                if (records[i] == key) return i;
+            }
+            return std::nullopt;
+        }
+
+        while (lowerBound <= upperBound) {
+            size_t midPoint = (upperBound + lowerBound) / 2;
+            const auto& record = records[midPoint];
+            if (record == key) {
+                return midPoint;
+            } else if (record > key) {
+                upperBound = midPoint - 1;
+            } else if (record < key) {
+                lowerBound = midPoint + 1;
+            }
         }
         return std::nullopt;
     }
