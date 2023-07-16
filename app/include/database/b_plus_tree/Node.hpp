@@ -5,13 +5,13 @@ enum class NodeType {
     Leaf
 };
 
-template<size_t MAX_SIZE, typename KEY_TYPE, typename VALUE_TYPE>
-class Node2 {
+template<typename KEY_TYPE, typename VALUE_TYPE>
+class Node {
 protected:
     std::vector<KEY_TYPE> records;
-    Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* parent = nullptr;
+    Node<KEY_TYPE, VALUE_TYPE>* parent = nullptr;
 
-    explicit Node2(const std::vector<KEY_TYPE> &records) : records(records) {}
+    explicit Node(const std::vector<KEY_TYPE> &records) : records(records) {}
 
     // technically could pre-allocate
 
@@ -59,8 +59,6 @@ protected:
     }
 
 public:
-    static const size_t maxSize = MAX_SIZE;
-
     virtual NodeType getNodeType() = 0;
 
     std::optional<size_t> indexOf(const KEY_TYPE &key) const {
@@ -72,11 +70,11 @@ public:
         return records;
     }
 
-    Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* getParent() const {
+    Node<KEY_TYPE, VALUE_TYPE>* getParent() const {
         return parent;
     }
 
-    void setParent(Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* newParent) {
+    void setParent(Node<KEY_TYPE, VALUE_TYPE>* newParent) {
         this->parent = newParent;
     }
 };

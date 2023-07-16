@@ -14,8 +14,6 @@ BPlusSection BPlusSection::deserializeBuffer(const std::span<uint8_t> &buffer) {
     const auto graphOrder = UINT8_TO_UINT32(buffer, 4);
     const auto graphNodeCount = UINT8_TO_UINT32(buffer, 8);
 
-
-
     return {sectionLength, graphOrder, graphNodeCount};
 }
 

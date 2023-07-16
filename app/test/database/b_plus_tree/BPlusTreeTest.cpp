@@ -1,4 +1,4 @@
-#include "database/BPlusTree.hpp"
+#include "database/b_plus_tree/BPlusTree.hpp"
 
 #include <gtest/gtest.h>
 
@@ -11,14 +11,14 @@ BPlusTree<ORDER, K, K> createTreeWithKeyAsValue(std::initializer_list<K> inserti
     return newTree;
 }
 
-template<size_t ORDER, typename K, typename V>
-Internal<ORDER, K, V>* uncheckedInternalNode(Node2<ORDER, K, V>* nodePointer) {
-    return dynamic_cast<Internal<ORDER, K, V>*>(nodePointer);
+template<typename K, typename V>
+Internal<K, V>* uncheckedInternalNode(Node<K, V>* nodePointer) {
+    return dynamic_cast<Internal<K, V>*>(nodePointer);
 }
 
-template<size_t ORDER, typename K, typename V>
-Leaf<ORDER, K, V>* uncheckedLeaf(Node2<ORDER, K, V>* nodePointer) {
-    return dynamic_cast<Leaf<ORDER, K, V>*>(nodePointer);
+template<typename K, typename V>
+Leaf<K, V>* uncheckedLeaf(Node<K, V>* nodePointer) {
+    return dynamic_cast<Leaf<K, V>*>(nodePointer);
 }
 
 TEST(BPlusTree, CorrectlyInsertsRecordsIntoTheRootNodeWithoutMakingChildren) {

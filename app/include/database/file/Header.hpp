@@ -22,10 +22,7 @@ public:
     [[nodiscard]] std::array<uint8_t, sizeInBytes> serializeBuffer();
 
     [[nodiscard]] uint32_t getMagicNumber() const;
-
     [[nodiscard]] uint8_t getFormatVersion() const;
-
     [[nodiscard]] uint32_t getBPlusSection() const;
-
     [[nodiscard]] uint32_t getDataSection() const;
 };

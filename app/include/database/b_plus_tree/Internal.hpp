@@ -3,22 +3,22 @@
 #include <cstdint>
 #include <cstddef>
 
-#include "database/Node.hpp"
+#include "Node.hpp"
 
-template<size_t MAX_SIZE, typename KEY_TYPE, typename VALUE_TYPE>
-class Internal : public Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE> {
-    typedef Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* ChildNode;
+template<typename KEY_TYPE, typename VALUE_TYPE>
+class Internal : public Node<KEY_TYPE, VALUE_TYPE> {
+    typedef Node<KEY_TYPE, VALUE_TYPE>* ChildNode;
 private:
     std::vector<ChildNode> children;
 
     explicit Internal(const std::vector<KEY_TYPE>& records,
                       const std::vector<ChildNode>& children) :
-                      Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE>(records),
+                      Node<KEY_TYPE, VALUE_TYPE>(records),
                       children(children) {}
 
 public:
     explicit Internal(ChildNode leftChild, const KEY_TYPE& separator, ChildNode rightChild) :
-        Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE>({separator}),
+        Node<KEY_TYPE, VALUE_TYPE>({separator}),
         children({leftChild, rightChild}) {
         leftChild->setParent(this);
         rightChild->setParent(this);
@@ -50,8 +50,8 @@ public:
      * creates and returns a new leaf which takes the records from the right hand side of the provided split index
      * the existing leaf will be mutated
      */
-    [[nodiscard]] Internal<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* splitRight(size_t splitIndex) {
-        auto newRightInternal = new Internal<MAX_SIZE, KEY_TYPE, VALUE_TYPE>(
+    [[nodiscard]] Internal<KEY_TYPE, VALUE_TYPE>* splitRight(size_t splitIndex) {
+        auto newRightInternal = new Internal<KEY_TYPE, VALUE_TYPE>(
                 {this->records.begin() + splitIndex+1, this->records.end()},
                 {this->children.begin() + splitIndex+1, this->children.end()}
         );
@@ -67,8 +67,8 @@ public:
      * creates and returns a new leaf which takes the records from the left hand side of the provided split index
      * the existing leaf will be mutated
      */
-    [[nodiscard]] Internal<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* splitLeft(size_t splitIndex) {
-        auto newLeftInternal = new Internal<MAX_SIZE, KEY_TYPE, VALUE_TYPE>(
+    [[nodiscard]] Internal<KEY_TYPE, VALUE_TYPE>* splitLeft(size_t splitIndex) {
+        auto newLeftInternal = new Internal<KEY_TYPE, VALUE_TYPE>(
                 {this->records.begin(), this->records.begin() + splitIndex},
                 {this->children.begin(), this->children.end()  + splitIndex + 1}
         );

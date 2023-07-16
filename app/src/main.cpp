@@ -10,16 +10,16 @@
 #define RECIPES_PER_INGREDIENT 99999
 
 //#include "BPlusTree.hpp"
-#include "database/BPlusTree.hpp"
+#include "database/b_plus_tree/BPlusTree.hpp"
 
 
 #ifndef TESTING
 
 #define ENTRIES_COUNT 10000000
 
-#include "database/Node.hpp"
-#include "database/Internal.hpp"
-#include "database/Leaf.hpp"
+#include "database/b_plus_tree/Node.hpp"
+#include "database/b_plus_tree/Internal.hpp"
+#include "database/b_plus_tree/Leaf.hpp"
 
 auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 std::default_random_engine randomEngine(now);
@@ -33,7 +33,7 @@ int main() {
 //    std::cout << "Opening db version: ";
 
 #define ORDER 500
-    BPlusTree<ORDER, uint32_t,  uint32_t> testTree;
+    BPlusTree<uint32_t,  uint32_t> testTree(ORDER);
     std::cout << "priming data" << std::endl;
     for (int i = 0; i < ENTRIES_COUNT; ++i) {
         auto itemValue = randomValue(randomEngine);

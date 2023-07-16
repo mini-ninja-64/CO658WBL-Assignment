@@ -3,21 +3,21 @@
 #include <cstdint>
 #include <cstddef>
 
-template<size_t MAX_SIZE, typename KEY_TYPE, typename VALUE_TYPE>
-class Leaf : public Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE> {
+template<typename KEY_TYPE, typename VALUE_TYPE>
+class Leaf : public Node<KEY_TYPE, VALUE_TYPE> {
 private:
     std::vector<VALUE_TYPE> values;
 
-    Leaf<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* nextLeaf = nullptr;
-    Leaf<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* previousLeaf = nullptr;
+    Leaf<KEY_TYPE, VALUE_TYPE>* nextLeaf = nullptr;
+    Leaf<KEY_TYPE, VALUE_TYPE>* previousLeaf = nullptr;
 
 
     explicit Leaf(const std::vector<KEY_TYPE> &records, const std::vector<VALUE_TYPE> &values) :
-    Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE>(records),
+    Node<KEY_TYPE, VALUE_TYPE>(records),
     values(values) {}
 
 public:
-    Leaf(): Node2<MAX_SIZE, KEY_TYPE, VALUE_TYPE>({}) {};
+    Leaf(): Node<KEY_TYPE, VALUE_TYPE>({}) {};
 
     [[nodiscard]] virtual NodeType getNodeType() {
         return NodeType::Leaf;
@@ -49,8 +49,8 @@ public:
      * creates and returns a new leaf which takes the records from the right hand side of the provided split index
      * the existing leaf will be mutated
      */
-    [[nodiscard]] Leaf<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* splitRight(size_t splitIndex) {
-        auto newRightLeaf = new Leaf<MAX_SIZE, KEY_TYPE, VALUE_TYPE>(
+    [[nodiscard]] Leaf<KEY_TYPE, VALUE_TYPE>* splitRight(size_t splitIndex) {
+        auto newRightLeaf = new Leaf<KEY_TYPE, VALUE_TYPE>(
                 {this->records.begin() + splitIndex, this->records.end()},
                 {this->values.begin() + splitIndex, this->values.end()}
         );
@@ -74,8 +74,8 @@ public:
      * creates and returns a new leaf which takes the records from the left hand side of the provided split index
      * the existing leaf will be mutated
      */
-    [[nodiscard]] Leaf<MAX_SIZE, KEY_TYPE, VALUE_TYPE>* splitLeft(size_t splitIndex) {
-        auto newLeftLeaf = new Leaf<MAX_SIZE, KEY_TYPE, VALUE_TYPE>(
+    [[nodiscard]] Leaf<KEY_TYPE, VALUE_TYPE>* splitLeft(size_t splitIndex) {
+        auto newLeftLeaf = new Leaf<KEY_TYPE, VALUE_TYPE>(
                 {this->records.begin(), this->values.begin()+splitIndex},
                 {this->values.begin(), this->values.begin()+splitIndex}
         );
