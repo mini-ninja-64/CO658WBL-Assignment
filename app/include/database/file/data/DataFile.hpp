@@ -1,6 +1,6 @@
 #pragma once
 
-#include "database/file/LazyNode.hpp"
+#include "database/file/tree/LazyNode.hpp"
 #include "database/file/Header.hpp"
 #include "DataMetadata.hpp"
 
@@ -8,13 +8,15 @@ template<typename K, typename ADDRESS>
 class DataFile {
 private:
     std::fstream file;
-    FileBackedNode<K, ADDRESS> root;
     DataMetadata metadata;
 
 public:
     static const uint32_t MAGIC_NUMBER = 0x64617461;
 
-    DataFile(const std::filesystem::path& filePath, bool forceOverwrite) {
+    DataFile(const std::filesystem::path& filePath, bool forceOverwrite):
+    metadata({
+        .numberOfDataChunks = 0
+    }) {
         const bool write = !exists(filePath) || forceOverwrite;
 
         auto streamConfig = std::ios::in | std::ios::out | std::ios::binary;
@@ -26,9 +28,6 @@ public:
             //
             DatabaseFileHeader header = { MAGIC_NUMBER, 1 };
             auto pointer = serialize::toStream(header, 0, file);
-            metadata = {
-                    .numberOfDataChunks = 0
-            };
             serialize::toStream(metadata, pointer, file);
         } else {
             auto indexHeader = deserialize::fromStream<DatabaseFileHeader>(0, file);
@@ -39,10 +38,6 @@ public:
             auto metadataPosition = deserialize::fixedLengthInBytes<DatabaseFileHeader>();
             metadata = deserialize::fromStream<DataMetadata>(metadataPosition, file);
         }
-
-//        if (indexMetadata.numberOfNodes == 0) {
-//            // initialize root
-//        }
     }
 
 //    ADDRESS insertNode(const FileBackedNode<K, ADDRESS>& node) {}

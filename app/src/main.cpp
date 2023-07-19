@@ -12,6 +12,10 @@
 //#include "BPlusTree.hpp"
 #include "database/b_plus_tree/BPlusTree.hpp"
 #include "database/file/DatabaseFileManager.hpp"
+#include "database/file/tree/LazyNode.hpp"
+
+#include "database/file/tree/FileBackedInternal.hpp"
+#include "database/file/tree/FileBackedLeaf.hpp"
 
 
 #ifndef TESTING

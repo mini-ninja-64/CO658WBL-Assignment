@@ -1,14 +1,16 @@
 #pragma once
 
-#include "database/file/LazyNode.hpp"
 #include "database/file/Header.hpp"
 #include "IndexMetadata.hpp"
+#include "database/file/tree/FileBackedNode.hpp"
+#include "database/file/tree/FileBackedInternal.hpp"
+#include "database/file/tree/FileBackedLeaf.hpp"
+#include "database/file/parsing/serialize.hpp"
 
 template<typename K, typename ADDRESS>
 class IndexFile {
 private:
     std::fstream file;
-    std::unique_ptr<FileBackedNode<K, ADDRESS>> root;
     IndexMetadata metadata;
     std::streampos insertionPosition;
 
@@ -20,7 +22,11 @@ private:
 public:
     static const uint32_t MAGIC_NUMBER = 0x696E6478;
 
-    IndexFile(const std::filesystem::path& filePath, bool forceOverwrite, uint32_t defaultOrder) {
+    IndexFile(const std::filesystem::path& filePath, bool forceOverwrite, uint32_t defaultOrder):
+    metadata({
+        .graphOrder = defaultOrder,
+        .numberOfNodes = 0
+    }) {
         const bool write = !exists(filePath) || forceOverwrite;
 
         auto streamConfig = std::ios::in | std::ios::out | std::ios::binary;
@@ -32,10 +38,6 @@ public:
             //
             DatabaseFileHeader indexHeader = { MAGIC_NUMBER, 1 };
             auto indexPointer = serialize::toStream(indexHeader, 0, file);
-            metadata = {
-                    .graphOrder = defaultOrder,
-                    .numberOfNodes = 0,
-            };
             serialize::toStream(metadata, indexPointer, file);
         } else {
             auto indexHeader = deserialize::fromStream<DatabaseFileHeader>(0, file);
@@ -50,20 +52,48 @@ public:
         file.seekg(0, std::ios_base::end);
         insertionPosition = file.tellg();
 
-//        if (metadata.numberOfNodes == 0) {
-//
-//        }
+        if (metadata.numberOfNodes == 0) {
+            newNode(NodeType::Leaf);
+        }
     }
 
-    ADDRESS insertNode(const FileBackedNode<K, ADDRESS>& node) {
+    using NodePointer = std::shared_ptr<FileBackedNode<K, ADDRESS>>;
+    NodePointer newNode([[maybe_unused]] NodeType type) {
         ADDRESS newNodeAddress = insertionPosition;
-        insertionPosition = serialize::toStream(node, newNodeAddress, file);
 
-        metadata.numberOfNodes++;
-        writeMetadata();
+        NodePointer node;
+        switch (type) {
+            case NodeType::Internal:
+                //TODO: make internal node
+                node = std::dynamic_pointer_cast<FileBackedNode<K, ADDRESS>>(
+                        std::make_shared<FileBackedLeaf<K, ADDRESS>>(*this, newNodeAddress)
+                );
+                break;
 
-        return newNodeAddress;
+            case NodeType::Leaf:
+                node = std::dynamic_pointer_cast<FileBackedNode<K, ADDRESS>>(
+                        std::make_shared<FileBackedLeaf<K, ADDRESS>>(*this, newNodeAddress)
+                );
+                break;
+        }
+        std::cout << serialize::fixedLengthInBytesImplementation(TypeTag<FileBackedNode<K, ADDRESS>>{}) << std::endl;
+        std::cout << serialize::fixedLengthInBytes<FileBackedNode<K, ADDRESS>>() << std::endl;
+//        insertionPosition = serialize::toStream(*node, newNodeAddress, file);
+//
+//        metadata.numberOfNodes++;
+//        writeMetadata();
+
+        return nullptr;
     }
+
+    std::shared_ptr<FileBackedNode<K, ADDRESS>> getNode(ADDRESS address) {
+        return std::make_shared(deserialize::fromStream(address, file));
+    }
+
+    void writeNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node) {
+        serialize::toStream(node, address, file);
+    }
+
 //
 //    void updateNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node) {}
 //

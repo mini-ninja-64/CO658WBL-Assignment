@@ -16,12 +16,12 @@ struct DataMetadata {
 
 namespace deserialize {
     template<>
-    constexpr size_t fixedLengthInBytes<DataMetadata>() {
+    constexpr size_t fixedLengthInBytesImplementation(TypeTag<DataMetadata>) {
         return dataMetadataSize;
     }
 
     template<>
-    DataMetadata fixedLengthType(FixedLengthDataBuffer<DataMetadata> buffer) {
+    DataMetadata fixedLengthTypeImplementation(FixedLengthDataBuffer<DataMetadata> buffer, TypeTag<DataMetadata>) {
         return {
             UINT8_TO_UINT32(buffer,0)
         };
@@ -30,12 +30,12 @@ namespace deserialize {
 
 namespace serialize {
     template<>
-    constexpr size_t fixedLengthInBytes<DataMetadata>() {
+    constexpr size_t fixedLengthInBytesImplementation(TypeTag<DataMetadata>) {
         return dataMetadataSize;
     }
 
     template<>
-    FixedLengthDataBuffer<DataMetadata> fixedLengthType(const DataMetadata& element) {
+    FixedLengthDataBuffer<DataMetadata> fixedLengthTypeImplementation(const DataMetadata& element, TypeTag<DataMetadata>) {
         return {
             UINT32_TO_UINT8(element.numberOfDataChunks)
         };

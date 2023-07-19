@@ -17,12 +17,12 @@ struct DatabaseFileHeader {
 
 namespace deserialize {
     template<>
-    constexpr size_t fixedLengthInBytes<DatabaseFileHeader>() {
+    constexpr size_t fixedLengthInBytesImplementation(TypeTag<DatabaseFileHeader>) {
         return databaseFileHeaderSize;
     }
 
     template<>
-    DatabaseFileHeader fixedLengthType(FixedLengthDataBuffer<DatabaseFileHeader> buffer) {
+    DatabaseFileHeader fixedLengthTypeImplementation(FixedLengthDataBuffer<DatabaseFileHeader> buffer, TypeTag<DatabaseFileHeader>) {
         const auto magicNumber = UINT8_TO_UINT32(buffer,0);
         const auto formatVersion = buffer[4];
         if(formatVersion != 1) throw std::domain_error("Unsupported database file version");
@@ -36,12 +36,12 @@ namespace deserialize {
 
 namespace serialize {
     template<>
-    constexpr size_t fixedLengthInBytes<DatabaseFileHeader>() {
+    constexpr size_t fixedLengthInBytesImplementation(TypeTag<DatabaseFileHeader>) {
         return databaseFileHeaderSize;
     }
 
     template<>
-    FixedLengthDataBuffer<DatabaseFileHeader> fixedLengthType(const DatabaseFileHeader& element) {
+    FixedLengthDataBuffer<DatabaseFileHeader> fixedLengthTypeImplementation(const DatabaseFileHeader& element, TypeTag<DatabaseFileHeader>) {
         constexpr auto sizeInBytes = fixedLengthInBytes<DatabaseFileHeader>();
 
         std::array<uint8_t, sizeInBytes> headerBuffer = {
