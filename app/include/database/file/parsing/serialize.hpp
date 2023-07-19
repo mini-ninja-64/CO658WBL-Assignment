@@ -7,7 +7,6 @@
 #include <fstream>
 
 #include "utils/templating.hpp"
-#include "common.hpp"
 
 namespace serialize {
     template<typename T>
@@ -15,7 +14,7 @@ namespace serialize {
 
     template<typename T>
     constexpr size_t fixedLengthInBytes() {
-        return fixedLengthInBytesImplementation(TypeTag<T>{});
+        return serialize::fixedLengthInBytesImplementation(TypeTag<T>{});
     }
 
     template<typename T>
@@ -26,7 +25,7 @@ namespace serialize {
 
     template<typename T>
     FixedLengthDataBuffer<T> fixedLengthType(const T &element) {
-        return fixedLengthTypeImplementation(element, TypeTag<T>{});
+        return serialize::fixedLengthTypeImplementation(element, TypeTag<T>{});
     }
 
     template<typename T>
@@ -34,7 +33,7 @@ namespace serialize {
 
     template<typename T>
     std::streampos toStream(const T &element, std::streampos position, std::fstream &fileStream) {
-        return toStreamImplementation(element, position, fileStream, TypeTag<T>{});
+        return serialize::toStreamImplementation(element, position, fileStream, TypeTag<T>{});
     }
 
 }
@@ -48,7 +47,7 @@ namespace serialize {
 
     template<typename T>
     std::streampos toStreamImplementation(const T& element, std::streampos position, std::fstream& fileStream, TypeTag<T>) {
-        auto serializedBuffer = fixedLengthType(element);
+        auto serializedBuffer = serialize::fixedLengthType(element);
 
         fileStream.seekp(position);
         fileStream.write(reinterpret_cast<char *>(serializedBuffer.data()), serializedBuffer.size());

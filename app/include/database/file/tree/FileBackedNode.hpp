@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <optional>
+
 #include "database/file/index/IndexFile.hpp"
 
 enum class NodeType {

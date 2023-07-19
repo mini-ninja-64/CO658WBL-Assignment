@@ -2,10 +2,10 @@
 
 #include "database/file/Header.hpp"
 #include "IndexMetadata.hpp"
+#include "database/file/parsing/serialize.hpp"
 #include "database/file/tree/FileBackedNode.hpp"
 #include "database/file/tree/FileBackedInternal.hpp"
 #include "database/file/tree/FileBackedLeaf.hpp"
-#include "database/file/parsing/serialize.hpp"
 
 template<typename K, typename ADDRESS>
 class IndexFile {
@@ -76,8 +76,8 @@ public:
                 );
                 break;
         }
-        std::cout << serialize::fixedLengthInBytesImplementation(TypeTag<FileBackedNode<K, ADDRESS>>{}) << std::endl;
-        std::cout << serialize::fixedLengthInBytes<FileBackedNode<K, ADDRESS>>() << std::endl;
+//        std::cout << serialize::fixedLengthInBytesImplementation(TypeTag<FileBackedNode<K, ADDRESS>>{}) << std::endl;
+            std::cout << serialize::fixedLengthInBytes<std::vector<int>>() << std::endl;
 //        insertionPosition = serialize::toStream(*node, newNodeAddress, file);
 //
 //        metadata.numberOfNodes++;

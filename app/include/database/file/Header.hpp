@@ -42,7 +42,7 @@ namespace serialize {
 
     template<>
     FixedLengthDataBuffer<DatabaseFileHeader> fixedLengthTypeImplementation(const DatabaseFileHeader& element, TypeTag<DatabaseFileHeader>) {
-        constexpr auto sizeInBytes = fixedLengthInBytes<DatabaseFileHeader>();
+        constexpr auto sizeInBytes = serialize::fixedLengthInBytes<DatabaseFileHeader>();
 
         std::array<uint8_t, sizeInBytes> headerBuffer = {
                 UINT32_TO_UINT8(element.magicNumber),
