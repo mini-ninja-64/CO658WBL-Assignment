@@ -7,25 +7,18 @@
 
 #include "utils/bitwise.hpp"
 #include "utils/templating.hpp"
-#include "deserialize.hpp"
-#include "serialize.hpp"
+#include "common.hpp"
 
-namespace deserialize {
-    template<>
-    constexpr size_t fixedLengthInBytesImplementation(TypeTag<uint32_t>) { return 32/8; }
-
-    template<>
-    uint32_t fixedLengthTypeImplementation(FixedLengthDataBuffer<uint32_t> buffer, TypeTag<uint32_t>) {
-        return UINT8_TO_UINT32(buffer, 0);
+template<>
+struct Deserialize<uint32_t> {
+    FIXED_LENGTH_DESERIALIZER(uint32_t, (32/8)) {
+        return UINT8_TO_UINT32(it, 0);
     }
-}
+};
 
-namespace serialize {
-    template<>
-    constexpr size_t fixedLengthInBytesImplementation(TypeTag<uint32_t>) { return 32/8; }
-
-    template<>
-    FixedLengthDataBuffer<uint32_t> fixedLengthTypeImplementation(const uint32_t& element, TypeTag<uint32_t>) {
-        return { UINT32_TO_UINT8(element) };
+template<>
+struct Serialize<uint32_t> {
+    FIXED_LENGTH_SERIALIZER(uint32_t, (32/8)) {
+        return { UINT32_TO_UINT8(it) };
     }
-}
+};

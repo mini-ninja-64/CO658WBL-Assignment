@@ -27,16 +27,16 @@ public:
         if (write) {
             //
             DatabaseFileHeader header = { MAGIC_NUMBER, 1 };
-            auto pointer = serialize::toStream(header, 0, file);
-            serialize::toStream(metadata, pointer, file);
+            auto pointer = Serialize<DatabaseFileHeader>::toStream(header, 0, file);
+            Serialize<DataMetadata>::toStream(metadata, pointer, file);
         } else {
-            auto indexHeader = deserialize::fromStream<DatabaseFileHeader>(0, file);
+            auto indexHeader = Deserialize<DatabaseFileHeader>::fromStream(0, file);
             if(indexHeader.magicNumber != MAGIC_NUMBER)
                 throw std::domain_error("provided index file has incorrect magic number");
 
             // TODO: std::streampos smaller than size_t (complier/system/arch dependent)
-            auto metadataPosition = deserialize::fixedLengthInBytes<DatabaseFileHeader>();
-            metadata = deserialize::fromStream<DataMetadata>(metadataPosition, file);
+            auto metadataPosition = Deserialize<DatabaseFileHeader>::length;
+            metadata = Deserialize<DataMetadata>::fromStream(metadataPosition, file);
         }
     }
 

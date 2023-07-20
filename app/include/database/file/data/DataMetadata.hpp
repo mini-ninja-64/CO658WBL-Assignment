@@ -5,8 +5,7 @@
 #include <span>
 #include <filesystem>
 
-#include "database/file/parsing/deserialize.hpp"
-#include "database/file/parsing/serialize.hpp"
+#include "database/file/parsing/common.hpp"
 #include "utils/bitwise.hpp"
 
 static constexpr size_t dataMetadataSize = (32)/8;
@@ -14,31 +13,17 @@ struct DataMetadata {
     uint32_t numberOfDataChunks;
 };
 
-namespace deserialize {
-    template<>
-    constexpr size_t fixedLengthInBytesImplementation(TypeTag<DataMetadata>) {
-        return dataMetadataSize;
-    }
 
-    template<>
-    DataMetadata fixedLengthTypeImplementation(FixedLengthDataBuffer<DataMetadata> buffer, TypeTag<DataMetadata>) {
-        return {
-            UINT8_TO_UINT32(buffer,0)
-        };
+template<>
+struct Deserialize<DataMetadata> {
+    FIXED_LENGTH_DESERIALIZER(DataMetadata, dataMetadataSize) {
+        return { UINT8_TO_UINT32(it,0) };
     }
-}
+};
 
-namespace serialize {
-    template<>
-    constexpr size_t fixedLengthInBytesImplementation(TypeTag<DataMetadata>) {
-        return dataMetadataSize;
+template<>
+struct Serialize<DataMetadata> {
+    FIXED_LENGTH_SERIALIZER(DataMetadata, dataMetadataSize)  {
+        return { UINT32_TO_UINT8(it.numberOfDataChunks) };
     }
-
-    template<>
-    FixedLengthDataBuffer<DataMetadata> fixedLengthTypeImplementation(const DataMetadata& element, TypeTag<DataMetadata>) {
-        return {
-            UINT32_TO_UINT8(element.numberOfDataChunks)
-        };
-    }
-}
-
+};

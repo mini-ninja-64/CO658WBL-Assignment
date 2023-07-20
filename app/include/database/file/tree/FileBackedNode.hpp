@@ -3,6 +3,7 @@
 #include <vector>
 #include <optional>
 
+#include "database/file/parsing/common.hpp"
 #include "database/file/index/IndexFile.hpp"
 
 enum class NodeType {
@@ -63,31 +64,70 @@ public:
 };
 
 /*
- * | data              | size in bytes        |
- * |-------------------|----------------------|
- * | node type         | 1                    |
- * | number of records | 4                    |
- * | records           | type size * ORDER    |
- * | data addresses    | address size * ORDER |
- * | next leaf         | address size         |
- * | prev leaf         | address size         |
+ *
+ * A = Address Size
+ * K = Key Size
+ * O = Graph Order
+ *
+ * Internal Node Data Layout:
+ * | data               | size in bytes              |
+ * |--------------------|----------------------------|
+ * | node type          | 1                          |
+ * | parent             | A                          |
+ * | number of records  | 4                          |
+ * | records            | K * O                      |
+ * | children addresses | A * (O + 1)                |
+ * | reserved           | A                          |
+ *
+ * Leaf Data Layout:
+ * | data               | size in bytes              |
+ * |------------------- |----------------------------|
+ * | node type          | 1                          |
+ * | parent             | address size               |
+ * | number of records  | 4                          |
+ * | records            | K * O                      |
+ * | data addresses     | A * O                      |
+ * | next leaf          | A                          |
+ * | prev leaf          | A                          |
+ * Size: 1 + A + 4 + (K * O) + (A * O) + A + A
+ *     : 5 + 3A + O(K + A)
  */
 
-//namespace common {
-//    template<typename K>
-//    constexpr size_t fixedLengthInBytesImplementation(TypeTag<FileBackedNode<K , uint32_t>>) { return 32/8; }
+
+//template<typename K, typename ADDRESS>
+//static size_t fileBackedNodeSize(size_t order) {
+//    auto keySize = Deserialize<K>::size;
+//    auto addressSize = Deserialize<ADDRESS>::size;
+//    return 5 + (3 * addressSize) + (order *  (keySize + addressSize));
 //}
+//
+//template<typename K, typename ADDRESS>
+//struct Deserialize<FileBackedNode<K, ADDRESS>> {
+//    static FileBackedNode<K, ADDRESS> fromStream(std::streampos position, std::fstream& fileStream) {
+//        const auto size = fileBackedNodeSize<K, ADDRESS>(order);
+//    }
+//};
+//
+//template<typename K, typename ADDRESS>
+//struct Serialize<FileBackedNode<K, ADDRESS>> {
+//    static std::streampos toStream(const FileBackedNode<K, ADDRESS> &element, std::streampos position, std::fstream &fileStream) {
+//        auto order = element.;
+//        const auto size = fileBackedNodeSize<K, ADDRESS>(order);
+//    }
+//};
 
-namespace serialize {
-    template<typename K, typename ADDRESS>
-    constexpr size_t fixedLengthInBytesImplementation(TypeTag<FileBackedNode<K , ADDRESS>>) {
-        return 0;
+template<typename T, typename ADDRESS>
+struct Deserialize<FileBackedNode<T, ADDRESS>> {
+    using DeserializeType = FileBackedNode<T, ADDRESS>;
+    FIXED_LENGTH_DESERIALIZER(DeserializeType, 1) {
+        return {0};
     }
+};
 
-    template<typename K, typename ADDRESS>
-    FixedLengthDataBuffer<FileBackedNode<K, ADDRESS>> fixedLengthTypeImplementation(
-            [[maybe_unused]] const FileBackedNode<K, ADDRESS> &element,
-            TypeTag<FileBackedNode<K, ADDRESS>>) {
-        return {};
+template<typename T, typename ADDRESS>
+struct Serialize<FileBackedNode<T, ADDRESS>> {
+    using SerializeType = FileBackedNode<T, ADDRESS>;
+    FIXED_LENGTH_SERIALIZER(SerializeType, 1) {
+        return {0};
     }
-}
+};

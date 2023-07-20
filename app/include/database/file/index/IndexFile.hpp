@@ -15,8 +15,8 @@ private:
     std::streampos insertionPosition;
 
     void writeMetadata() {
-        constexpr auto metadataPosition = serialize::fixedLengthInBytes<IndexMetadata>();
-        serialize::toStream(metadata, metadataPosition, file);
+        constexpr auto metadataPosition = Serialize<DatabaseFileHeader>::length;
+        Serialize<IndexMetadata>::toStream(metadata, metadataPosition, file);
     }
 
 public:
@@ -35,18 +35,17 @@ public:
         file = std::fstream(filePath, streamConfig);
 
         if (write) {
-            //
             DatabaseFileHeader indexHeader = { MAGIC_NUMBER, 1 };
-            auto indexPointer = serialize::toStream(indexHeader, 0, file);
-            serialize::toStream(metadata, indexPointer, file);
+            auto indexPointer = Serialize<DatabaseFileHeader>::toStream(indexHeader, 0, file);
+            Serialize<IndexMetadata>::toStream(metadata, indexPointer, file);
         } else {
-            auto indexHeader = deserialize::fromStream<DatabaseFileHeader>(0, file);
+            auto indexHeader = Deserialize<DatabaseFileHeader>::fromStream(0, file);
             if(indexHeader.magicNumber != MAGIC_NUMBER)
                 throw std::domain_error("provided index file has incorrect magic number");
 
             // TODO: std::streampos smaller than size_t (complier/system/arch dependent)
-            auto indexMetadataPosition = deserialize::fixedLengthInBytes<DatabaseFileHeader>();
-            metadata = deserialize::fromStream<IndexMetadata>(indexMetadataPosition, file);
+            auto indexMetadataPosition = Deserialize<DatabaseFileHeader>::length;
+            metadata = Deserialize<IndexMetadata>::fromStream(indexMetadataPosition, file);
         }
 
         file.seekg(0, std::ios_base::end);
@@ -77,7 +76,7 @@ public:
                 break;
         }
 //        std::cout << serialize::fixedLengthInBytesImplementation(TypeTag<FileBackedNode<K, ADDRESS>>{}) << std::endl;
-            std::cout << serialize::fixedLengthInBytes<std::vector<int>>() << std::endl;
+            std::cout << Serialize<FileBackedNode<K, ADDRESS>>::length << std::endl;
 //        insertionPosition = serialize::toStream(*node, newNodeAddress, file);
 //
 //        metadata.numberOfNodes++;
@@ -87,11 +86,11 @@ public:
     }
 
     std::shared_ptr<FileBackedNode<K, ADDRESS>> getNode(ADDRESS address) {
-        return std::make_shared(deserialize::fromStream(address, file));
+        return std::make_shared(Deserialize<FileBackedNode<K, ADDRESS>>::fromStream(address, file));
     }
 
     void writeNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node) {
-        serialize::toStream(node, address, file);
+        Serialize<FileBackedNode<K, ADDRESS>>::toStream(node, address, file);
     }
 
 //

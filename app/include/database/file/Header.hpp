@@ -5,8 +5,7 @@
 #include <span>
 #include <filesystem>
 
-#include "database/file/parsing/deserialize.hpp"
-#include "database/file/parsing/serialize.hpp"
+#include "database/file/parsing/common.hpp"
 #include "utils/bitwise.hpp"
 
 constexpr size_t databaseFileHeaderSize = (32 + 8)/8;
@@ -15,41 +14,32 @@ struct DatabaseFileHeader {
     uint8_t formatVersion;
 };
 
-namespace deserialize {
-    template<>
-    constexpr size_t fixedLengthInBytesImplementation(TypeTag<DatabaseFileHeader>) {
-        return databaseFileHeaderSize;
-    }
 
-    template<>
-    DatabaseFileHeader fixedLengthTypeImplementation(FixedLengthDataBuffer<DatabaseFileHeader> buffer, TypeTag<DatabaseFileHeader>) {
-        const auto magicNumber = UINT8_TO_UINT32(buffer,0);
-        const auto formatVersion = buffer[4];
+
+template<>
+struct Deserialize<DatabaseFileHeader> {
+    FIXED_LENGTH_DESERIALIZER(DatabaseFileHeader, databaseFileHeaderSize) {
+        const auto magicNumber = UINT8_TO_UINT32(it,0);
+        const auto formatVersion = it[4];
         if(formatVersion != 1) throw std::domain_error("Unsupported database file version");
 
         return {
-            magicNumber,
-            formatVersion
+                magicNumber,
+                formatVersion
         };
     }
-}
+};
 
-namespace serialize {
-    template<>
-    constexpr size_t fixedLengthInBytesImplementation(TypeTag<DatabaseFileHeader>) {
-        return databaseFileHeaderSize;
-    }
-
-    template<>
-    FixedLengthDataBuffer<DatabaseFileHeader> fixedLengthTypeImplementation(const DatabaseFileHeader& element, TypeTag<DatabaseFileHeader>) {
-        constexpr auto sizeInBytes = serialize::fixedLengthInBytes<DatabaseFileHeader>();
+template<>
+struct Serialize<DatabaseFileHeader> {
+    FIXED_LENGTH_SERIALIZER(DatabaseFileHeader, databaseFileHeaderSize) {
+        constexpr auto sizeInBytes = Serialize<DatabaseFileHeader>::length;
 
         std::array<uint8_t, sizeInBytes> headerBuffer = {
-                UINT32_TO_UINT8(element.magicNumber),
-                element.formatVersion
+                UINT32_TO_UINT8(it.magicNumber),
+                it.formatVersion
         };
 
         return headerBuffer;
     }
-}
-
+};
