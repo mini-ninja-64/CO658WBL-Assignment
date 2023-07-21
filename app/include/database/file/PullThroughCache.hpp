@@ -5,6 +5,8 @@
 #include <memory>
 #include <functional>
 
+#include "tree/friends.hpp"
+
 // TODO: popularity ranking to know which node to eject for the cache
 template<typename K, typename V>
 class PullThroughCache {
@@ -17,11 +19,11 @@ public:
     PullThroughCache(const std::function<V(const K &)> &valuePuller, size_t maximumSize) :
         valuePuller(valuePuller), maximumSize(maximumSize) {}
 
-    std::shared_ptr<V> fetch(const K& key) {
+    V fetch(const K& key) {
         if (cacheMap.contains(key)) return cacheMap[key];
 
         auto value = valuePuller(key);
-        populate(value);
+        populate(key, value);
         return value;
     }
 

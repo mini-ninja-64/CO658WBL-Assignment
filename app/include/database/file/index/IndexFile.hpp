@@ -2,10 +2,11 @@
 
 #include "database/file/Header.hpp"
 #include "IndexMetadata.hpp"
-#include "database/file/tree/parser.hpp"
+#include "database/file/tree/nodeParser.hpp"
 #include "database/file/tree/FileBackedNode.hpp"
 #include "database/file/tree/FileBackedInternal.hpp"
 #include "database/file/tree/FileBackedLeaf.hpp"
+#include "database/file/PullThroughCache.hpp"
 
 template<typename K, typename ADDRESS>
 class IndexFile {
@@ -61,42 +62,40 @@ public:
 
         file.seekg(0, std::ios_base::end);
         insertionPosition = file.tellg();
-
-        if (metadata.numberOfNodes == 0) {
-            newNode(NodeType::Leaf);
-        }
+        if (metadata.numberOfNodes == 0) insertNode(std::make_shared<FileBackedLeaf<K, ADDRESS>>(FileBackedLeaf<K, ADDRESS>(*this, {0,1,2,3}, {0,1,2,3})));
     }
 
-    NodePointer newNode([[maybe_unused]] NodeType type) {
-        ADDRESS newNodeAddress = insertionPosition;
-
-        NodePointer node;
-        switch (type) {
-            case NodeType::Internal:
-                //TODO: make internal node
-                node = std::dynamic_pointer_cast<FileBackedNode<K, ADDRESS>>(
-                        std::make_shared<FileBackedLeaf<K, ADDRESS>>(*this, newNodeAddress)
-                );
-                break;
-
-            case NodeType::Leaf:
-                node = std::dynamic_pointer_cast<FileBackedNode<K, ADDRESS>>(
-                        std::make_shared<FileBackedLeaf<K, ADDRESS>>(*this, newNodeAddress)
-                );
-                break;
-        }
-        insertionPosition = Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext>::toStream(*node, insertionPosition, file, {
+    LazyNode<K, ADDRESS> insertNode(NodePointer node) {
+        const auto nodeAddress =  static_cast<ADDRESS>(insertionPosition);
+        insertionPosition = Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext>::toStream(*node, nodeAddress, file, {
                 .order = metadata.graphOrder
-            });
-        cache.populate(newNodeAddress, node);
+        });
+        cache.populate(nodeAddress, node);
 
         metadata.numberOfNodes++;
         writeMetadata();
-        return nullptr;
+        return {*this, nodeAddress, node};
+    }
+
+    void saveNode(ADDRESS address, NodePointer node) {
+        Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext>::toStream(*node, address, file, {
+                .order = metadata.graphOrder
+        });
+        cache.populate(address, node);
     }
 
     NodePointer getNode(ADDRESS address) {
         return cache.fetch(address);
+    }
+
+    const ADDRESS &getNextNodeAddress() const {
+        // TODO: error check int overflow
+        return static_cast<ADDRESS>(insertionPosition);
+    }
+
+    LazyNode<K,ADDRESS> getRootNode() {
+        constexpr auto rootAddress = Serialize<DatabaseFileHeader>::length + Serialize<IndexMetadata>::length;
+        return {*this, rootAddress};
     }
 
 //    std::shared_ptr<FileBackedNode<K, ADDRESS>> getNode(ADDRESS address) {

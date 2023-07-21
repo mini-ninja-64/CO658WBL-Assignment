@@ -18,7 +18,9 @@ public:
                                  const std::filesystem::path& dataFilePath,
                                  bool forceOverwrite):
                                  indexFile(indexFilePath, forceOverwrite, 100),
-                                 dataFile(dataFilePath, forceOverwrite) {}
+                                 dataFile(dataFilePath, forceOverwrite) {
+        indexFile.getRootNode().get();
+    }
 
     // insertData(addr, const Data&)
 

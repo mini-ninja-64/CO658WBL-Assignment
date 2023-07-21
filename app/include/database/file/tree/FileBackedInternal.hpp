@@ -2,30 +2,40 @@
 
 #include "LazyNode.hpp"
 
-template<typename KEY_TYPE, typename ADDRESS>
-class FileBackedInternal : public FileBackedNode<KEY_TYPE, ADDRESS> {
-    using LazyChildNode = LazyNode<FileBackedNode<KEY_TYPE, ADDRESS>, ADDRESS>;
+template<typename K, typename ADDRESS>
+class FileBackedInternal : public FileBackedNode<K, ADDRESS> {
 private:
-    std::vector<LazyChildNode> children;
+    std::vector<ADDRESS> childrenAddresses;
 
-    FileBackedInternal(const std::vector<KEY_TYPE>& records,
-                      const std::vector<LazyChildNode>& children) :
-            FileBackedNode<KEY_TYPE, ADDRESS>(records),
-            children(children) {}
 public:
+    explicit FileBackedInternal(IndexFile<K, ADDRESS> &indexFile) :
+            FileBackedNode<K, ADDRESS>(indexFile, {}),
+            childrenAddresses({}) {}
+
+    FileBackedInternal(IndexFile<K, ADDRESS> &indexFile,
+        const std::vector<K>& records,
+        std::optional<ADDRESS> parent,
+        const std::vector<ADDRESS>& childrenAddresses) :
+        FileBackedNode<K, ADDRESS>(indexFile, records, parent),
+        childrenAddresses(childrenAddresses) {}
+
 //    FileBackedInternal(LazyChildNode leftChild, const KEY_TYPE& separator, LazyChildNode rightChild) :
 //            Node<KEY_TYPE, VALUE_TYPE>({separator}),
 //            children({leftChild, rightChild}) {
 //        leftChild->setParent(this);
 //        rightChild->setParent(this);
 //    }
-    virtual NodeType getNodeType() const {
+    [[nodiscard]] virtual NodeType getNodeType() const {
         return NodeType::Internal;
     }
 
-    const std::vector<LazyChildNode>& getChildren() const {
-        return children;
+    [[nodiscard]] const std::vector<ADDRESS> &getChildrenAddresses() const {
+        return childrenAddresses;
     }
+//
+//    const std::vector<LazyNode<K,ADDRESS>>& getChildren() const {
+//        return childrenAddresses;
+//    }
 
 //    // Find the next child based on the provided key
 //    LazyChildNode next(const KEY_TYPE& key) {

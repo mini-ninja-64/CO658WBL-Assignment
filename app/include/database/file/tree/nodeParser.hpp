@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include "database/file/parsing/common.hpp"
 #include "database/file/parsing/base_parsers.hpp"
 
@@ -44,10 +45,10 @@ static size_t fileBackedNodeSize(size_t order) {
     return 5 + (3 * addressSize) + (order *  (keySize + addressSize));
 }
 
-#define SPAN_FROM_BUFFER(TYPE, BUFFER, OFFSET) std::span(BUFFER + OFFSET, Deserialize<TYPE>::length)
+#define SPAN_FROM_BUFFER(TYPE, BUFFER, OFFSET) std::span<uint8_t, Deserialize<TYPE>::length>(BUFFER + OFFSET, Deserialize<TYPE>::length)
 
 template<typename T>
-std::vector<T> deserializeElements(uint8_t* buffer, size_t offset,  size_t elementCount) {
+static std::vector<T> deserializeElements(uint8_t* buffer, size_t offset,  size_t elementCount) {
     constexpr auto typeLength = Deserialize<T>::length;
     std::vector<T> elements;
     for (size_t i = 0; i < elementCount; ++i) {
@@ -58,12 +59,16 @@ std::vector<T> deserializeElements(uint8_t* buffer, size_t offset,  size_t eleme
     return elements;
 }
 
+template<typename T>
+std::optional<T> zeroIsOptionalEmpty(T value) {
+    return value == 0 ? std::nullopt : std::optional<T>(value);
+}
+
 template<typename K, typename ADDRESS>
 struct DeserializeGraphContext {
     IndexFile<K, ADDRESS>& indexFile;
     size_t order;
 };
-
 
 template<typename K, typename ADDRESS>
 struct Deserialize<std::unique_ptr<FileBackedNode<K, ADDRESS>>, DeserializeGraphContext<K, ADDRESS>> {
@@ -77,39 +82,48 @@ struct Deserialize<std::unique_ptr<FileBackedNode<K, ADDRESS>>, DeserializeGraph
         fileStream.read(reinterpret_cast<char *>(buffer), nodeSize);
 
         auto bufferPosition = 0;
-//        NodeType nodeType;
-//        switch (buffer[bufferPosition]) {
-//            case static_cast<uint8_t>(NodeType::Internal):
-//                nodeType = NodeType::Internal;
-//                break;
-//
-//            case static_cast<uint8_t>(NodeType::Leaf):
-//                nodeType = NodeType::Leaf;
-//                break;
-//            default:
-//                throw std::domain_error("Unsupported node type found");
-//        }
+
+        // Parse NodeType and check for illegal values
+        auto rawNodeType = buffer[bufferPosition];
+        if (rawNodeType != static_cast<uint8_t>(NodeType::Internal) &&
+            rawNodeType != static_cast<uint8_t>(NodeType::Leaf))
+                throw std::domain_error("Unsupported node type found");
+        auto nodeType = static_cast<NodeType>(rawNodeType);
         bufferPosition++;
 
-//        const auto parent = Deserialize<ADDRESS>::fromBytes(SPAN_FROM_BUFFER(ADDRESS, buffer, bufferPosition));
+
+        const auto parent = zeroIsOptionalEmpty(Deserialize<ADDRESS>::fromBytes(SPAN_FROM_BUFFER(ADDRESS, buffer, bufferPosition)));
         bufferPosition += addressLength;
 
         const auto recordCount = UINT8_TO_UINT32(buffer, bufferPosition);
         bufferPosition += 4;
 
         std::vector<K> records = deserializeElements<K>(buffer, bufferPosition, recordCount);
+        bufferPosition += addressLength * context.order;
 
-//        switch(nodeType) {
-//            case NodeType::Internal:
-//                break;
-//            case NodeType::Leaf:
-//
-//                break;
-//        }
+        std::unique_ptr<FileBackedNode<K, ADDRESS>> nodePointer;
+        switch(nodeType) {
+            case NodeType::Internal: {
+                auto childrenAddresses = deserializeElements<ADDRESS>(buffer, bufferPosition, recordCount + 1);
+                FileBackedInternal<K, ADDRESS> loadedNode(context.indexFile, records, parent, childrenAddresses);
+                nodePointer = std::make_unique<FileBackedInternal<K, ADDRESS>>(loadedNode);
+                break;
+            }
+
+            case NodeType::Leaf:{
+                auto dataAddresses = deserializeElements<ADDRESS>(buffer, bufferPosition, recordCount);
+                bufferPosition += addressLength * context.order;
+                auto nextLeaf = zeroIsOptionalEmpty(Deserialize<ADDRESS>::fromBytes(SPAN_FROM_BUFFER(ADDRESS, buffer, bufferPosition)));
+                bufferPosition += addressLength;
+                auto previousLeaf = zeroIsOptionalEmpty(Deserialize<ADDRESS>::fromBytes(SPAN_FROM_BUFFER(ADDRESS, buffer, bufferPosition)));
+                FileBackedLeaf<K,ADDRESS> loadedNode(context.indexFile, records, parent, dataAddresses, nextLeaf, previousLeaf);
+                nodePointer = std::make_unique<FileBackedLeaf<K,ADDRESS>>(loadedNode);
+                break;
+            }
+        }
 
         delete[] buffer;
-
-        return std::make_unique<FileBackedLeaf<K, ADDRESS>>(context.indexFile, position);
+        return nodePointer;
     }
 };
 
@@ -129,7 +143,7 @@ static size_t serializeFixedLengthElementsToBuffer(std::span<uint8_t>& buffer, s
     }
     auto chunksToPad = chunkSize - elements.size();
     auto bytesToPad = chunksToPad * Deserialize<T>::length;
-    std::memset(buffer.data() + offset, 0, bytesToPad);
+    std::memset(buffer.data() + bufferPosition, 0, bytesToPad);
     return bufferPosition + bytesToPad;
 }
 
@@ -151,10 +165,11 @@ struct Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext> {
         buffer[bufferPosition] = static_cast<uint8_t>(node.getNodeType());
         bufferPosition++;
 
-        // Write parent address
         std::optional<LazyNode<K, ADDRESS>> parent = node.getParent();
         if (parent) {
             bufferPosition = serializeFixedLengthElementToBuffer(bufferSpan, bufferPosition, parent.value().getAddress());
+        } else {
+            bufferPosition += Serialize<ADDRESS>::length;
         }
 
         // Write records
@@ -166,9 +181,8 @@ struct Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext> {
         switch (node.getNodeType()) {
             case NodeType::Leaf: {
                 auto leafNode = static_cast<const FileBackedLeaf<K, ADDRESS>&>(node);
-                // TODO: write value addresses, for now just write empty
-                std::vector<ADDRESS> emptyVector;
-                bufferPosition = serializeFixedLengthElementsToBuffer(bufferSpan, bufferPosition, emptyVector, context.order);
+                // Write Leaf Data Addresses
+                bufferPosition = serializeFixedLengthElementsToBuffer(bufferSpan, bufferPosition, leafNode.getDataAddresses(), context.order);
 
                 auto nextNode = leafNode.getNextNode();
                 if(nextNode)
@@ -177,16 +191,12 @@ struct Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext> {
 
                 auto previousNode = leafNode.getPreviousNode();
                 if(previousNode)
-                    bufferPosition = serializeFixedLengthElementToBuffer(bufferSpan, bufferPosition, previousNode.value().getAddress());
-                else bufferPosition += Serialize<ADDRESS>::length;
+                    serializeFixedLengthElementToBuffer(bufferSpan, bufferPosition, previousNode.value().getAddress());
             }
                 break;
             case NodeType::Internal: {
                 [[maybe_unused]] auto internalNode = static_cast<const FileBackedInternal<K, ADDRESS>&>(node);
-                // TODO: write value addresses, for now just write empty
-                std::vector<ADDRESS> children;
-                bufferPosition = serializeFixedLengthElementsToBuffer(bufferSpan, bufferPosition, children, context.order + 1);
-                bufferPosition = serializeFixedLengthElementToBuffer(bufferSpan, bufferPosition, (uint32_t) 0);
+                serializeFixedLengthElementsToBuffer(bufferSpan, bufferPosition, internalNode.getChildrenAddresses(), context.order + 1);
             }
                 break;
         }

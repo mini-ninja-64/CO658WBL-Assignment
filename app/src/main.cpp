@@ -14,7 +14,7 @@
 #ifndef TESTING
 
 int main() {
-    DatabaseFileManager<uint32_t, uint32_t> databaseFileManager("./test.graph_index", "./test.graph_db", true);
+    DatabaseFileManager<uint32_t, uint32_t> databaseFileManager("./test.graph_index", "./test.graph_db", false);
 }
 
 #endif

@@ -19,27 +19,65 @@ class LazyNode;
 
 template<typename K, typename ADDRESS>
 class FileBackedNode {
-private:
+    friend LazyNode<K, ADDRESS> splitRight(LazyNode<K, ADDRESS> leafToSplit, size_t splitIndex);
+//    friend LazyNode<K, ADDRESS> splitLeft(LazyNode<K, ADDRESS> leafToSplit, size_t splitIndex);
+protected:
     IndexFile<K, ADDRESS>& indexFile;
-    ADDRESS address;
     std::vector<K> records;
 
     std::optional<ADDRESS> parent;
 
-    void saveNodeToFile() {
-        indexFile.writeNode(address, *this);
+    // For sufficiently small datasets binary search will actually be slower than a brute force,
+    // because of this we can have a small optimisation for data under a certain threshold
+    // this is of course highly dependent on the computer.
+#define BINARY_SEARCH_THRESHOLD 500
+    std::optional<size_t> indexOf(const K& key, size_t& finalIndex) const {
+        size_t lowerBound = 0;
+        size_t upperBound = records.size() - 1;
+
+        if (records.size() <= BINARY_SEARCH_THRESHOLD) {
+            finalIndex = 0;
+            while(finalIndex < records.size()) {
+                const auto& record = records[finalIndex];
+                if (record == key) return finalIndex;
+                if (record > key) break;
+                finalIndex++;
+            }
+            return std::nullopt;
+        }
+
+        while (lowerBound <= upperBound) {
+            size_t midPoint = (upperBound + lowerBound) / 2;
+            const auto& record = records[midPoint];
+            if (record == key) {
+                return midPoint;
+            } else if (record > key) {
+                upperBound = midPoint - 1;
+            } else if (record < key) {
+                lowerBound = midPoint + 1;
+            }
+        }
+        finalIndex = lowerBound;
+        return std::nullopt;
+    }
+
+    size_t insertableLocation(const K &key) const {
+        size_t newIndex = 0;
+        std::optional<size_t> exactMatch = indexOf(key, newIndex);
+        // As B+ Trees are right biased, if an exact match was found
+        // we should bias to the right as the right hand side child
+        // contains the provided key.
+        return exactMatch.value_or(newIndex - 1) + 1;
     }
 
 public:
-    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, ADDRESS address, const std::vector<K> &records) :
+    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, const std::vector<K> &records) :
         indexFile(indexFile),
-        address(address),
         records(records),
         parent(std::nullopt) {}
 
-    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, ADDRESS address, const std::vector<K> &records, ADDRESS parent) :
+    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, const std::vector<K> &records, std::optional<ADDRESS> parent) :
         indexFile(indexFile),
-        address(address),
         records(records),
         parent(parent) {}
 
@@ -47,9 +85,8 @@ public:
 
     [[nodiscard]] virtual NodeType getNodeType() const = 0;
 
-    void setParent(ADDRESS newAddress) {
-        parent = LazyNode<K, ADDRESS>(indexFile, newAddress);
-        saveNodeToFile();
+    void setParent(const ADDRESS& newAddress) {
+        parent = newAddress;
     }
 
     std::optional<LazyNode<K, ADDRESS>> getParent() const {
@@ -61,4 +98,8 @@ public:
         return records;
     }
 
+    std::optional<size_t> indexOf(const K &key) const {
+        size_t index = 0;
+        return indexOf(key, index);
+    }
 };
