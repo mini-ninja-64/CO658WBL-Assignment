@@ -19,7 +19,7 @@ public:
 //        leftChild->setParent(this);
 //        rightChild->setParent(this);
 //    }
-    virtual NodeType getNodeType() {
+    virtual NodeType getNodeType() const {
         return NodeType::Internal;
     }
 

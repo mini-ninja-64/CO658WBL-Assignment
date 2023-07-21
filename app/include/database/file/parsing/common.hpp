@@ -22,7 +22,14 @@ static std::streampos toStream(const TYPE& element, std::streampos position, std
     fileStream.write(reinterpret_cast<char *>(serializedBuffer.data()), serializedBuffer.size()); \
     return fileStream.tellp(); \
 } \
-static std::array<uint8_t, length> toBytes([[maybe_unused]] TYPE it)
+static std::array<uint8_t, length> toBytes([[maybe_unused]] const TYPE& it)
+
+template<typename T>
+concept FixedLengthSerializable =
+requires (const T& element) {
+    { Serialize<T>::length } -> std::same_as<size_t>;
+    { Serialize<T>::toBytes(element) } -> std::same_as<std::array<uint8_t, Serialize<T>::length>>;
+} && Serializable<T, void>;
 
 #define FIXED_LENGTH_DESERIALIZER(TYPE, LENGTH) \
 static constexpr size_t length = LENGTH; \
@@ -34,3 +41,11 @@ static TYPE fromStream(std::streampos position, std::fstream& fileStream) { \
     return fromBytes(buffer); \
 } \
 static TYPE fromBytes([[maybe_unused]] std::span<uint8_t, length> it)
+
+
+template<typename T>
+concept FixedLengthDeserializable =
+requires (std::span<T, Deserialize<T>::length> element) {
+    { Deserialize<T>::length } -> std::same_as<size_t>;
+    { Deserialize<T>::fromBytes(element) } -> std::same_as<T>;
+} && Deserializable<T, void>;

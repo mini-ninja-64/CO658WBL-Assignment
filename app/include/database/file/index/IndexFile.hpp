@@ -2,7 +2,7 @@
 
 #include "database/file/Header.hpp"
 #include "IndexMetadata.hpp"
-#include "database/file/parsing/serialize.hpp"
+#include "database/file/tree/parser.hpp"
 #include "database/file/tree/FileBackedNode.hpp"
 #include "database/file/tree/FileBackedInternal.hpp"
 #include "database/file/tree/FileBackedLeaf.hpp"
@@ -23,10 +23,7 @@ public:
     static const uint32_t MAGIC_NUMBER = 0x696E6478;
 
     IndexFile(const std::filesystem::path& filePath, bool forceOverwrite, uint32_t defaultOrder):
-    metadata({
-        .graphOrder = defaultOrder,
-        .numberOfNodes = 0
-    }) {
+    metadata({ .graphOrder = defaultOrder, .numberOfNodes = 0 }) {
         const bool write = !exists(filePath) || forceOverwrite;
 
         auto streamConfig = std::ios::in | std::ios::out | std::ios::binary;
@@ -75,23 +72,22 @@ public:
                 );
                 break;
         }
-//        std::cout << serialize::fixedLengthInBytesImplementation(TypeTag<FileBackedNode<K, ADDRESS>>{}) << std::endl;
-            std::cout << Serialize<FileBackedNode<K, ADDRESS>>::length << std::endl;
-//        insertionPosition = serialize::toStream(*node, newNodeAddress, file);
-//
-//        metadata.numberOfNodes++;
-//        writeMetadata();
+        insertionPosition = Serialize<FileBackedNode<K, ADDRESS>, GraphContext>::toStream(*node, insertionPosition, file, {
+                .order = metadata.graphOrder
+            });
 
+        metadata.numberOfNodes++;
+        writeMetadata();
         return nullptr;
     }
 
-    std::shared_ptr<FileBackedNode<K, ADDRESS>> getNode(ADDRESS address) {
-        return std::make_shared(Deserialize<FileBackedNode<K, ADDRESS>>::fromStream(address, file));
-    }
-
-    void writeNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node) {
-        Serialize<FileBackedNode<K, ADDRESS>>::toStream(node, address, file);
-    }
+//    std::shared_ptr<FileBackedNode<K, ADDRESS>> getNode(ADDRESS address) {
+//        return std::make_shared(Deserialize<FileBackedNode<K, ADDRESS>>::fromStream(address, file));
+//    }
+//
+//    void writeNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node) {
+//        Serialize<FileBackedNode<K, ADDRESS>>::toStream(node, address, file);
+//    }
 
 //
 //    void updateNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node) {}

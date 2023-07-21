@@ -9,6 +9,11 @@
 
 
 template<typename K, typename ADDRESS>
+class IndexFile;
+template<typename K, typename ADDRESS>
+class FileBackedNode;
+
+template<typename K, typename ADDRESS>
 class LazyNode {
 private:
     IndexFile<K, ADDRESS>& indexFile;
@@ -25,6 +30,10 @@ public:
                 indexFile(indexFile),
                 address(address),
                 node(node) {}
+
+    ADDRESS getAddress() const {
+        return address;
+    }
 
     /*
      * Returns the node

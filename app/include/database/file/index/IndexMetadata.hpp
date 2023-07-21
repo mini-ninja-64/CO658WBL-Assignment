@@ -29,7 +29,7 @@ struct Serialize<IndexMetadata> {
     FIXED_LENGTH_SERIALIZER(IndexMetadata, indexMetadataSize) {
         return {
             UINT32_TO_UINT8(it.graphOrder),
-            UINT32_TO_UINT8(it.graphOrder)
+            UINT32_TO_UINT8(it.numberOfNodes)
         };
     }
 };
