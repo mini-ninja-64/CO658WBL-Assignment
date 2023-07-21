@@ -9,21 +9,35 @@
 
 template<typename K, typename ADDRESS>
 class IndexFile {
+public:
+    using NodePointer = std::shared_ptr<FileBackedNode<K, ADDRESS>>;
 private:
     std::fstream file;
     IndexMetadata metadata;
     std::streampos insertionPosition;
+    PullThroughCache<ADDRESS, NodePointer> cache;
 
     void writeMetadata() {
         constexpr auto metadataPosition = Serialize<DatabaseFileHeader>::length;
         Serialize<IndexMetadata>::toStream(metadata, metadataPosition, file);
     }
 
+    NodePointer pullNodeFromFile(ADDRESS address) {
+        auto node = Deserialize<std::unique_ptr<FileBackedNode<K, ADDRESS>>, DeserializeGraphContext<K,ADDRESS>>::fromStream(address, file, {
+                .indexFile = *this,
+                .order = metadata.graphOrder
+        });
+        // Convert our initially loaded unique smart pointer,
+        // to a shared smart pointer for storage in the cache
+        return std::move(node);
+    }
+
 public:
     static const uint32_t MAGIC_NUMBER = 0x696E6478;
 
     IndexFile(const std::filesystem::path& filePath, bool forceOverwrite, uint32_t defaultOrder):
-    metadata({ .graphOrder = defaultOrder, .numberOfNodes = 0 }) {
+        metadata({ .graphOrder = defaultOrder, .numberOfNodes = 0 }),
+        cache([this](auto address) -> auto { return this->pullNodeFromFile(address); }, 100) {
         const bool write = !exists(filePath) || forceOverwrite;
 
         auto streamConfig = std::ios::in | std::ios::out | std::ios::binary;
@@ -53,7 +67,6 @@ public:
         }
     }
 
-    using NodePointer = std::shared_ptr<FileBackedNode<K, ADDRESS>>;
     NodePointer newNode([[maybe_unused]] NodeType type) {
         ADDRESS newNodeAddress = insertionPosition;
 
@@ -72,13 +85,18 @@ public:
                 );
                 break;
         }
-        insertionPosition = Serialize<FileBackedNode<K, ADDRESS>, GraphContext>::toStream(*node, insertionPosition, file, {
+        insertionPosition = Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext>::toStream(*node, insertionPosition, file, {
                 .order = metadata.graphOrder
             });
+        cache.populate(newNodeAddress, node);
 
         metadata.numberOfNodes++;
         writeMetadata();
         return nullptr;
+    }
+
+    NodePointer getNode(ADDRESS address) {
+        return cache.fetch(address);
     }
 
 //    std::shared_ptr<FileBackedNode<K, ADDRESS>> getNode(ADDRESS address) {

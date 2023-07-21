@@ -44,6 +44,75 @@ static size_t fileBackedNodeSize(size_t order) {
     return 5 + (3 * addressSize) + (order *  (keySize + addressSize));
 }
 
+#define SPAN_FROM_BUFFER(TYPE, BUFFER, OFFSET) std::span(BUFFER + OFFSET, Deserialize<TYPE>::length)
+
+template<typename T>
+std::vector<T> deserializeElements(uint8_t* buffer, size_t offset,  size_t elementCount) {
+    constexpr auto typeLength = Deserialize<T>::length;
+    std::vector<T> elements;
+    for (size_t i = 0; i < elementCount; ++i) {
+        std::span<uint8_t, typeLength> span((buffer + offset) + (i * typeLength), typeLength);
+        auto element = Deserialize<T>::fromBytes(span);
+        elements.push_back(element);
+    }
+    return elements;
+}
+
+template<typename K, typename ADDRESS>
+struct DeserializeGraphContext {
+    IndexFile<K, ADDRESS>& indexFile;
+    size_t order;
+};
+
+
+template<typename K, typename ADDRESS>
+struct Deserialize<std::unique_ptr<FileBackedNode<K, ADDRESS>>, DeserializeGraphContext<K, ADDRESS>> {
+    static std::unique_ptr<FileBackedNode<K, ADDRESS>> fromStream(std::streampos position, std::fstream& fileStream, DeserializeGraphContext<K, ADDRESS> context) {
+        const auto addressLength = Deserialize<ADDRESS>::length;
+        [[maybe_unused]] const auto keyLength = Deserialize<K>::length;
+        const auto nodeSize = fileBackedNodeSize<K, ADDRESS>(context.order);
+
+        auto buffer = new uint8_t[nodeSize];
+        fileStream.seekg(position);
+        fileStream.read(reinterpret_cast<char *>(buffer), nodeSize);
+
+        auto bufferPosition = 0;
+//        NodeType nodeType;
+//        switch (buffer[bufferPosition]) {
+//            case static_cast<uint8_t>(NodeType::Internal):
+//                nodeType = NodeType::Internal;
+//                break;
+//
+//            case static_cast<uint8_t>(NodeType::Leaf):
+//                nodeType = NodeType::Leaf;
+//                break;
+//            default:
+//                throw std::domain_error("Unsupported node type found");
+//        }
+        bufferPosition++;
+
+//        const auto parent = Deserialize<ADDRESS>::fromBytes(SPAN_FROM_BUFFER(ADDRESS, buffer, bufferPosition));
+        bufferPosition += addressLength;
+
+        const auto recordCount = UINT8_TO_UINT32(buffer, bufferPosition);
+        bufferPosition += 4;
+
+        std::vector<K> records = deserializeElements<K>(buffer, bufferPosition, recordCount);
+
+//        switch(nodeType) {
+//            case NodeType::Internal:
+//                break;
+//            case NodeType::Leaf:
+//
+//                break;
+//        }
+
+        delete[] buffer;
+
+        return std::make_unique<FileBackedLeaf<K, ADDRESS>>(context.indexFile, position);
+    }
+};
+
 template<typename T>
 static size_t serializeFixedLengthElementToBuffer(std::span<uint8_t>& buffer, size_t offset, const T& element) {
     if(Deserialize<T>::length > buffer.size() - offset) throw std::out_of_range("buffer not large enough for provided element");
@@ -64,20 +133,13 @@ static size_t serializeFixedLengthElementsToBuffer(std::span<uint8_t>& buffer, s
     return bufferPosition + bytesToPad;
 }
 
-struct GraphContext {
+struct SerializeGraphContext {
     size_t order;
 };
 
 template<typename K, typename ADDRESS>
-struct Deserialize<FileBackedNode<K, ADDRESS>, GraphContext> {
-    static FileBackedNode<K, ADDRESS> fromStream([[maybe_unused]]  std::streampos position, [[maybe_unused]] std::fstream& fileStream, GraphContext context) {
-        const auto size = fileBackedNodeSize<K, ADDRESS>(context.order);
-    }
-};
-
-template<typename K, typename ADDRESS>
-struct Serialize<FileBackedNode<K, ADDRESS>, GraphContext> {
-    static std::streampos toStream(const FileBackedNode<K, ADDRESS> &node, std::streampos position, std::fstream &fileStream, GraphContext context) {
+struct Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext> {
+    static std::streampos toStream(const FileBackedNode<K, ADDRESS> &node, std::streampos position, std::fstream &fileStream, SerializeGraphContext context) {
         auto order = context.order;
         const auto nodeSize = fileBackedNodeSize<K, ADDRESS>(order);
 

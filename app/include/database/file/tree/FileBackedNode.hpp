@@ -24,7 +24,7 @@ private:
     ADDRESS address;
     std::vector<K> records;
 
-    std::optional<LazyNode<K, ADDRESS>> parent;
+    std::optional<ADDRESS> parent;
 
     void saveNodeToFile() {
         indexFile.writeNode(address, *this);
@@ -37,17 +37,11 @@ public:
         records(records),
         parent(std::nullopt) {}
 
-    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, ADDRESS address, const std::vector<K> &records, LazyNode<K, ADDRESS> parent) :
+    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, ADDRESS address, const std::vector<K> &records, ADDRESS parent) :
         indexFile(indexFile),
         address(address),
         records(records),
         parent(parent) {}
-
-    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, ADDRESS address, const std::vector<K> &records, ADDRESS parentAddress) :
-        indexFile(indexFile),
-        address(address),
-        records(records),
-        parent(indexFile, parentAddress) {}
 
     virtual ~FileBackedNode() = default;
 
@@ -59,7 +53,8 @@ public:
     }
 
     std::optional<LazyNode<K, ADDRESS>> getParent() const {
-        return parent;
+        if(parent) return LazyNode<K, ADDRESS>{indexFile, parent.value()};
+        return std::nullopt;
     }
 
     const std::vector<K> &getRecords() const {
