@@ -19,12 +19,9 @@ public:
         FileBackedNode<K, ADDRESS>(indexFile, records, parent),
         childrenAddresses(childrenAddresses) {}
 
-//    FileBackedInternal(LazyChildNode leftChild, const KEY_TYPE& separator, LazyChildNode rightChild) :
-//            Node<KEY_TYPE, VALUE_TYPE>({separator}),
-//            children({leftChild, rightChild}) {
-//        leftChild->setParent(this);
-//        rightChild->setParent(this);
-//    }
+    FileBackedInternal(ADDRESS leftChild, const K& separator, ADDRESS rightChild) :
+            FileBackedNode<K, ADDRESS>({separator}),
+            childrenAddresses({leftChild, rightChild}) {}
     [[nodiscard]] virtual NodeType getNodeType() const {
         return NodeType::Internal;
     }

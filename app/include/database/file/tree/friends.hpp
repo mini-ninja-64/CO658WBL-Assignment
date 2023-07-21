@@ -14,23 +14,32 @@ template <typename K, typename ADDRESS>
 
     std::shared_ptr<FileBackedNode<K, ADDRESS>> rightNodePointer;
     switch (leftNode.get()->getNodeType()) {
-        case NodeType::Internal:
-//            rightNodePointer = std::make_shared<FileBackedInternal<K, ADDRESS>>(
-//                    leftLeaf->indexFile,
-//                    rightRecords,
-//                    {leftLeaf->dataAddresses.begin() + splitIndex, leftLeaf->dataAddresses.end()});
+        case NodeType::Internal: {
+            auto leftInternal = dynamic_cast<std::shared_ptr<FileBackedInternal<K, ADDRESS>>>(leftNode.get());
+            rightNodePointer = std::make_shared<FileBackedInternal<K, ADDRESS>>(
+                    indexFile,
+                    rightRecords,
+                    {leftInternal->childrenAddresses.begin() + splitIndex, leftInternal->childrenAddresses.end()});
+            // TODO: in-mem implementation was using +1, might be a bad fix for an off by one error, worth checking if required
+            //                {this->records.begin() + splitIndex+1, this->records.end()},
+            //                {this->children.begin() + splitIndex+1, this->children.end()}
+
+            leftInternal->childrenAddresses.erase(leftInternal->records.begin() + splitIndex, leftInternal->records.end());
+            leftInternal->childrenAddresses.erase(leftInternal->childrenAddresses.begin() + splitIndex, leftInternal->childrenAddresses.end());
+        }
             break;
         case NodeType::Leaf: {
             auto leftLeaf = dynamic_cast<std::shared_ptr<FileBackedLeaf<K, ADDRESS>>>(leftNode.get());
             rightNodePointer = std::make_shared<FileBackedLeaf<K, ADDRESS>>(
                     indexFile,
                     rightRecords,
-                    {leftLeaf->dataAddresses.begin() + splitIndex, leftLeaf->dataAddresses.end()});
+                    leftLeaf->parent,
+                    {leftLeaf->dataAddresses.begin() + splitIndex, leftLeaf->dataAddresses.end()},
+                    leftLeaf->nextLeaf,
+                    leftNode.getAddress()
+                    );
 
             leftLeaf->dataAddresses.erase(leftLeaf->dataAddresses.begin() + splitIndex, leftLeaf->dataAddresses.end());
-
-            rightNodePointer->nextLeaf = leftLeaf->nextLeaf;
-            rightNodePointer->prevLeaf = leftNode.getAddress();
             leftLeaf->nextLeaf = indexFile.getNextNodeAddress();
             }
             break;
