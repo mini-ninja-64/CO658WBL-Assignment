@@ -5,24 +5,41 @@
 #include <span>
 #include <filesystem>
 
-class Header {
-private:
+#include "database/file/parsing/common.hpp"
+#include "utils/bitwise.hpp"
+
+constexpr size_t databaseFileHeaderSize = (32 + 8)/8;
+struct DatabaseFileHeader {
     uint32_t magicNumber;
     uint8_t formatVersion;
-    uint32_t BPlusSection;
-    uint32_t dataSection;
+};
 
-    [[nodiscard]] static Header deserializeBuffer(const std::span<uint8_t>& buffer);
 
-public:
-    const static size_t sizeInBytes = (32 + 8 + 32 + 32) / 8;
 
-    Header(uint32_t magicNumber, uint8_t formatVersion, uint32_t bPlusSection, uint32_t dataSection);
-    [[nodiscard]] static Header deserializeStream(std::streamoff position, std::fstream& fileStream);
-    [[nodiscard]] std::array<uint8_t, sizeInBytes> serializeBuffer();
+template<>
+struct Deserialize<DatabaseFileHeader> {
+    FIXED_LENGTH_DESERIALIZER(DatabaseFileHeader, databaseFileHeaderSize) {
+        const auto magicNumber = UINT8_TO_UINT32(it,0);
+        const auto formatVersion = it[4];
+        if(formatVersion != 1) throw std::domain_error("Unsupported database file version");
 
-    [[nodiscard]] uint32_t getMagicNumber() const;
-    [[nodiscard]] uint8_t getFormatVersion() const;
-    [[nodiscard]] uint32_t getBPlusSection() const;
-    [[nodiscard]] uint32_t getDataSection() const;
+        return {
+                magicNumber,
+                formatVersion
+        };
+    }
+};
+
+template<>
+struct Serialize<DatabaseFileHeader> {
+    FIXED_LENGTH_SERIALIZER(DatabaseFileHeader, databaseFileHeaderSize) {
+        constexpr auto sizeInBytes = Serialize<DatabaseFileHeader>::length;
+
+        std::array<uint8_t, sizeInBytes> headerBuffer = {
+                UINT32_TO_UINT8(it.magicNumber),
+                it.formatVersion
+        };
+
+        return headerBuffer;
+    }
 };

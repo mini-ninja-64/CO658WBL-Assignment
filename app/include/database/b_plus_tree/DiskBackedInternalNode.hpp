@@ -1,23 +1,24 @@
 //#pragma once
 //
 //#include <cstdint>
+//#include <vector>
 //#include <cstddef>
 //
 //#include "Node.hpp"
 //
 //template<typename KEY_TYPE, typename VALUE_TYPE>
-//class Internal : public Node<KEY_TYPE, VALUE_TYPE> {
+//class DiskBackedInternalNode : public DiskBackedNode<KEY_TYPE, VALUE_TYPE> {
 //    typedef Node<KEY_TYPE, VALUE_TYPE>* ChildNode;
 //private:
 //    std::vector<ChildNode> children;
 //
-//    explicit Internal(const std::vector<KEY_TYPE>& records,
+//    explicit DiskBackedInternalNode(const std::vector<KEY_TYPE>& records,
 //                      const std::vector<ChildNode>& children) :
 //                      Node<KEY_TYPE, VALUE_TYPE>(records),
 //                      children(children) {}
 //
 //public:
-//    explicit Internal(ChildNode leftChild, const KEY_TYPE& separator, ChildNode rightChild) :
+//    explicit DiskBackedInternalNode(ChildNode leftChild, const KEY_TYPE& separator, ChildNode rightChild) :
 //        Node<KEY_TYPE, VALUE_TYPE>({separator}),
 //        children({leftChild, rightChild}) {
 //        leftChild->setParent(this);
