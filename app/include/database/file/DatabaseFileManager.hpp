@@ -12,7 +12,7 @@ template<typename K, typename ADDRESS>
 class DatabaseFileManager {
 private:
     IndexFile<K, ADDRESS> indexFile;
-    DataFile<K, ADDRESS> dataFile;
+    DataFile<ADDRESS> dataFile;
 public:
     DatabaseFileManager(const std::filesystem::path& indexFilePath,
                                  const std::filesystem::path& dataFilePath,

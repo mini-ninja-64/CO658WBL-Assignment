@@ -16,7 +16,7 @@ private:
     std::fstream file;
     IndexMetadata metadata;
     std::streampos insertionPosition;
-    PullThroughCache<ADDRESS, NodePointer> cache;
+    PullThroughCache<ADDRESS, NodePointer, 100> cache;
 
     void writeMetadata() {
         constexpr auto metadataPosition = Serialize<DatabaseFileHeader>::length;
@@ -38,7 +38,7 @@ public:
 
     IndexFile(const std::filesystem::path& filePath, bool forceOverwrite, uint32_t defaultOrder):
         metadata({ .graphOrder = defaultOrder, .numberOfNodes = 0 }),
-        cache([this](auto address) -> auto { return this->pullNodeFromFile(address); }, 100) {
+        cache([this](auto address) -> auto { return this->pullNodeFromFile(address); }) {
         const bool write = !exists(filePath) || forceOverwrite;
 
         auto streamConfig = std::ios::in | std::ios::out | std::ios::binary;
@@ -62,7 +62,8 @@ public:
 
         file.seekg(0, std::ios_base::end);
         insertionPosition = file.tellg();
-        if (metadata.numberOfNodes == 0) insertNode(std::make_shared<FileBackedLeaf<K, ADDRESS>>(FileBackedLeaf<K, ADDRESS>(*this, {0,1,2,3}, {0,1,2,3})));
+        if (metadata.numberOfNodes == 0)
+            insertNode(std::make_shared<FileBackedLeaf<K, ADDRESS>>(*this));
     }
 
     LazyNode<K, ADDRESS> insertNode(NodePointer node) {
@@ -74,7 +75,7 @@ public:
 
         metadata.numberOfNodes++;
         writeMetadata();
-        return {*this, nodeAddress, node};
+        return { *this, nodeAddress };
     }
 
     void saveNode(ADDRESS address, NodePointer node) {

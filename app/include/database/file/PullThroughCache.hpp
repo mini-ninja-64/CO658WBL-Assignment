@@ -6,16 +6,15 @@
 #include <functional>
 
 // TODO: popularity ranking to know which node to eject for the cache
-template<typename K, typename V>
+template<typename K, typename V, size_t MAX_SIZE>
 class PullThroughCache {
 private:
     std::unordered_map<K, V> cacheMap;
     std::function<V(const K&)> valuePuller;
-    size_t maximumSize;
 
 public:
-    PullThroughCache(const std::function<V(const K &)> &valuePuller, size_t maximumSize) :
-        valuePuller(valuePuller), maximumSize(maximumSize) {}
+    PullThroughCache(const std::function<V(const K &)> &valuePuller) :
+        valuePuller(valuePuller) {}
 
     V fetch(const K& key) {
         if (cacheMap.contains(key)) return cacheMap[key];
@@ -26,7 +25,7 @@ public:
     }
 
     void populate(const K& key, const V& value) {
-        if(maximumSize < cacheMap.size()) {
+        if(MAX_SIZE < cacheMap.size()) {
             cacheMap.erase(cacheMap.begin());
         }
         cacheMap[key] = value;

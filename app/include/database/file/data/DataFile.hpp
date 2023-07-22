@@ -1,13 +1,24 @@
 #pragma once
 
 #include "database/file/Header.hpp"
+#include "database/file/PullThroughCache.hpp"
+#include "database/file/parsing/common.hpp"
 #include "DataMetadata.hpp"
+#include "DataChunk.hpp"
 
-template<typename K, typename ADDRESS>
+template<typename ADDRESS>
 class DataFile {
+public:
+    using DataChunkPointer = std::shared_ptr<DataChunk>;
 private:
     std::fstream file;
     DataMetadata metadata;
+    PullThroughCache<ADDRESS, DataChunkPointer, 100> cache;
+
+    DataChunkPointer pullDataChunkFromFile(ADDRESS address) {
+        auto node = Deserialize<DataChunk>::fromStream(address, file);
+        return std::make_shared<DataChunk>(node);
+    }
 
 public:
     static const uint32_t MAGIC_NUMBER = 0x64617461;
@@ -15,7 +26,8 @@ public:
     DataFile(const std::filesystem::path& filePath, bool forceOverwrite):
     metadata({
         .numberOfDataChunks = 0
-    }) {
+    }),
+    cache([this](auto address) -> auto { return this->pullDataChunkFromFile(address); }){
         const bool write = !exists(filePath) || forceOverwrite;
 
         auto streamConfig = std::ios::in | std::ios::out | std::ios::binary;
@@ -39,9 +51,7 @@ public:
         }
     }
 
-//    ADDRESS insertNode(const FileBackedNode<K, ADDRESS>& node) {}
-//
-//    void updateNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node) {}
-//
-//    std::shared_ptr<FileBackedNode<K, ADDRESS>> readNode(ADDRESS address) {}
+    std::shared_ptr<DataChunk> getData(ADDRESS address) {
+        return cache.fetch(address);
+    }
 };
