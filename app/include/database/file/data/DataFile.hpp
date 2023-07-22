@@ -1,6 +1,5 @@
 #pragma once
 
-#include "database/file/tree/LazyNode.hpp"
 #include "database/file/Header.hpp"
 #include "DataMetadata.hpp"
 

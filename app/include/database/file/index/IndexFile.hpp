@@ -2,10 +2,10 @@
 
 #include "database/file/Header.hpp"
 #include "IndexMetadata.hpp"
-#include "database/file/tree/nodeParser.hpp"
-#include "database/file/tree/FileBackedNode.hpp"
-#include "database/file/tree/FileBackedInternal.hpp"
-#include "database/file/tree/FileBackedLeaf.hpp"
+#include "database/file/index/tree/nodeParser.hpp"
+#include "database/file/index/tree/FileBackedNode.hpp"
+#include "database/file/index/tree/FileBackedInternal.hpp"
+#include "database/file/index/tree/FileBackedLeaf.hpp"
 #include "database/file/PullThroughCache.hpp"
 
 template<typename K, typename ADDRESS>

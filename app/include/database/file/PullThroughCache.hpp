@@ -5,8 +5,6 @@
 #include <memory>
 #include <functional>
 
-#include "tree/friends.hpp"
-
 // TODO: popularity ranking to know which node to eject for the cache
 template<typename K, typename V>
 class PullThroughCache {
