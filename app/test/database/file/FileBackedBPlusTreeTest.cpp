@@ -6,13 +6,13 @@
 #define DATA_FILE "/tmp/db.graph_db"
 #define ADDRESS_TYPE uint32_t
 
-template <size_t ORDER, typename K>
+template <size_t ORDER, size_t DEFAULT_CHUNK_SIZE, typename K>
 FileBackedBPlusTree<K, ADDRESS_TYPE>
 createTreeWithKeyAsValue(std::initializer_list<uint8_t> insertions) {
   FileBackedBPlusTree<K, ADDRESS_TYPE> newTree(INDEX_FILE, DATA_FILE, ORDER,
-                                               true);
+                                               DEFAULT_CHUNK_SIZE, true);
   for (const auto &insertionKey : insertions) {
-    newTree.insert(insertionKey, DataChunk({insertionKey}));
+    newTree.insert(insertionKey, {insertionKey});
     std::cout << "\n\n";
     std::cout << newTree.renderGraphVizView() << std::endl;
   }
@@ -26,13 +26,13 @@ uncheckedInternalNode(std::shared_ptr<FileBackedNode<K, ADDRESS>> nodePointer) {
 }
 
 TEST(BPlusTree, CorrectlyInsertsRecordsIntoTheRootNodeWithoutMakingChildren) {
-  auto testTree = createTreeWithKeyAsValue<4, uint32_t>({0, 1, 2});
+  auto testTree = createTreeWithKeyAsValue<4, 4096, uint32_t>({0, 1, 2});
 
   ASSERT_EQ(testTree.getRoot().get()->getRecords().size(), 3);
 }
 
 TEST(BPlusTree, CorrectlyInsertsRecordsIntoTheRootNodeUntilItsFull) {
-  auto testTree = createTreeWithKeyAsValue<5, uint32_t>({0, 1, 2, 3, 4});
+  auto testTree = createTreeWithKeyAsValue<5, 4096, uint32_t>({0, 1, 2, 3, 4});
 
   ASSERT_EQ(testTree.getRoot().get()->getRecords().size(), 1);
   auto root = uncheckedInternalNode(testTree.getRoot().get());
@@ -42,7 +42,7 @@ TEST(BPlusTree, CorrectlyInsertsRecordsIntoTheRootNodeUntilItsFull) {
 }
 
 TEST(BPlusTree, CorrectlyCreatesASmallSimpleTreeWithASingleKeyInTheRoot) {
-  auto testTree = createTreeWithKeyAsValue<3, uint32_t>({0, 1, 2, 3, 4});
+  auto testTree = createTreeWithKeyAsValue<3, 4096, uint32_t>({0, 1, 2, 3, 4});
 
   auto root = uncheckedInternalNode(testTree.getRoot().get());
   ASSERT_EQ(root->getRecords().size(), 1);
@@ -65,8 +65,8 @@ TEST(BPlusTree, CorrectlyCreatesASmallSimpleTreeWithASingleKeyInTheRoot) {
 }
 
 TEST(BPlusTree, CorrectlyTraversesTreeUpwardsToRebalanceParents) {
-  auto testTree =
-      createTreeWithKeyAsValue<3, uint32_t>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
+  auto testTree = createTreeWithKeyAsValue<3, 4096, uint32_t>(
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
 
   auto root = uncheckedInternalNode(testTree.getRoot().get());
   ASSERT_EQ(root->getRecords().size(), 1);
@@ -90,8 +90,8 @@ TEST(BPlusTree, CorrectlyTraversesTreeUpwardsToRebalanceParents) {
 
 TEST(BPlusTree,
      CorrectlyCreatesASmallSimpleLeftLeaningTreeWithASingleKeyInTheRoot) {
-  auto testTree =
-      createTreeWithKeyAsValue<4, uint32_t>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
+  auto testTree = createTreeWithKeyAsValue<4, 4096, uint32_t>(
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
 
   auto root = uncheckedInternalNode(testTree.getRoot().get());
   ASSERT_EQ(root->getRecords().size(), 1);
@@ -114,7 +114,7 @@ TEST(BPlusTree,
 }
 
 TEST(BPlusTree, CorrectlyCreatesASmallSimpleTreeWhenUnsortedKeysAreInserted) {
-  auto testTree = createTreeWithKeyAsValue<3, uint32_t>({0, 4, 3, 1, 2});
+  auto testTree = createTreeWithKeyAsValue<3, 4096, uint32_t>({0, 4, 3, 1, 2});
 
   auto root = uncheckedInternalNode(testTree.getRoot().get());
   ASSERT_EQ(root->getRecords().size(), 2);
@@ -128,7 +128,7 @@ TEST(BPlusTree, CorrectlyCreatesASmallSimpleTreeWhenUnsortedKeysAreInserted) {
 }
 
 TEST(BPlusTree, CorrectlyCreatesALargeSimpleTreeWithMultipleKeysInTheRoot) {
-  auto testTree = createTreeWithKeyAsValue<4, uint32_t>(
+  auto testTree = createTreeWithKeyAsValue<4, 4096, uint32_t>(
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
   auto root = uncheckedInternalNode(testTree.getRoot().get());
@@ -151,7 +151,7 @@ TEST(BPlusTree, CorrectlyCreatesALargeSimpleTreeWithMultipleKeysInTheRoot) {
 }
 
 TEST(BPlusTree, CorrectlyCreatesALargeSimpleTreeFromUnorderedInsertions) {
-  auto testTree = createTreeWithKeyAsValue<4, uint32_t>(
+  auto testTree = createTreeWithKeyAsValue<4, 4096, uint32_t>(
       {3, 10, 0, 5, 4, 11, 1, 6, 2, 14, 7, 8, 15, 9, 13, 12});
 
   auto root = uncheckedInternalNode(testTree.getRoot().get());
@@ -170,22 +170,22 @@ TEST(BPlusTree, CorrectlyCreatesALargeSimpleTreeFromUnorderedInsertions) {
 
 TEST(BPlusTree, CorrectlyFindsItemsInATree) {
   FileBackedBPlusTree<uint32_t, uint32_t> testTree(INDEX_FILE, DATA_FILE, 5,
-                                                   true);
-  testTree.insert(1, DataChunk({50}));
-  testTree.insert(8, DataChunk({65}));
-  testTree.insert(2, DataChunk({100}));
-  testTree.insert(0, DataChunk({0}));
-  testTree.insert(6, DataChunk({80}));
-  testTree.insert(5, DataChunk({250}));
-  testTree.insert(3, DataChunk({150}));
-  testTree.insert(4, DataChunk({200}));
-  testTree.insert(7, DataChunk({125}));
+                                                   4096, true);
+  testTree.insert(1, {50});
+  testTree.insert(8, {65});
+  testTree.insert(2, {100});
+  testTree.insert(0, {0});
+  testTree.insert(6, {80});
+  testTree.insert(5, {250});
+  testTree.insert(3, {150});
+  testTree.insert(4, {200});
+  testTree.insert(7, {125});
 
-  ASSERT_EQ(testTree.find(0).value().get()->getData()[0], 0);
-  ASSERT_EQ(testTree.find(1).value().get()->getData()[0], 50);
-  ASSERT_EQ(testTree.find(2).value().get()->getData()[0], 100);
-  ASSERT_EQ(testTree.find(4).value().get()->getData()[0], 200);
-  ASSERT_EQ(testTree.find(7).value().get()->getData()[0], 125);
+  ASSERT_EQ(testTree.find(0).value()[0], 0);
+  ASSERT_EQ(testTree.find(1).value()[0], 50);
+  ASSERT_EQ(testTree.find(2).value()[0], 100);
+  ASSERT_EQ(testTree.find(4).value()[0], 200);
+  ASSERT_EQ(testTree.find(7).value()[0], 125);
   ASSERT_FALSE(testTree.find(9));
 }
 

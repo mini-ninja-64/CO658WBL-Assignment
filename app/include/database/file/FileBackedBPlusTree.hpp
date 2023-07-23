@@ -138,23 +138,38 @@ private:
 public:
   FileBackedBPlusTree(const std::filesystem::path &indexFilePath,
                       const std::filesystem::path &dataFilePath,
-                      uint32_t defaultChunkSize, size_t defaultOrder,
+                      size_t defaultOrder, uint32_t defaultChunkSize,
                       bool forceOverwrite)
       : indexFile(indexFilePath, forceOverwrite, defaultOrder),
         dataFile(dataFilePath, forceOverwrite, defaultChunkSize) {
     indexFile.getRootNode().get();
   }
 
-  void insert(const K &key, DataChunk<ADDRESS> dataChunk) {
+  void insert(const K &key, const std::vector<uint8_t> &data) {
     auto [parent, leaf] = findParentAndLeaf(key);
 
-    auto dataPointer =
-        std::make_shared<DataChunk<ADDRESS>>(std::move(dataChunk));
-    const auto newData = dataFile.insertData(std::move(dataPointer));
+    const auto dataChunkSize = dataFile.getMetadata().dataChunkSize;
+    // Round up the number of data chunks required to accommodate the provided
+    // data
+    auto numberOfChunksRequired = (data.size() + dataChunkSize) / dataChunkSize;
+    ADDRESS firstDataChunk = 0;
+    std::optional<ADDRESS> currentDataChunk = std::nullopt;
+    for (std::vector<uint8_t>::size_type i = 0; i < numberOfChunksRequired;
+         ++i) {
+      auto dataOffset = std::min((i + 1) * dataChunkSize, data.size());
+      std::vector<uint8_t> rawData = {data.begin() + (i * dataChunkSize),
+                                      data.begin() + dataOffset};
+      auto dataPointer =
+          std::make_shared<DataChunk<ADDRESS>>(rawData, currentDataChunk);
+      const auto newData = dataFile.insertData(std::move(dataPointer));
+      if (firstDataChunk == 0)
+        firstDataChunk = newData.getAddress();
+      currentDataChunk = newData.getAddress();
+    }
 
     auto leafPointer =
         std::static_pointer_cast<FileBackedLeaf<K, ADDRESS>>(leaf.get());
-    leafPointer->insertOrdered(key, newData.getAddress());
+    leafPointer->insertOrdered(key, firstDataChunk);
     indexFile.saveNode(leaf.getAddress(), leafPointer);
 
     if (leafPointer->getRecords().size() >=
@@ -193,15 +208,23 @@ public:
 
   LazyNode<K, ADDRESS> getRoot() { return indexFile.getRootNode(); }
 
-  [[nodiscard]] std::optional<LazyDataChunk<ADDRESS>> find(K key) {
+  [[nodiscard]] std::optional<std::vector<uint8_t>> find(K key) {
     auto [parent, leaf] = findParentAndLeaf(key);
     auto recordIndex = leaf.get()->indexOf(key);
     if (recordIndex) {
       auto leafNodePointer =
           std::static_pointer_cast<FileBackedLeaf<K, ADDRESS>>(leaf.get());
-      auto dataAddress =
+      std::optional<ADDRESS> currentDataAddress =
           leafNodePointer->getDataAddresses()[recordIndex.value()];
-      return LazyDataChunk<ADDRESS>{&dataFile, dataAddress};
+      std::vector<uint8_t> rawData;
+      while (currentDataAddress) {
+        auto dataChunk = dataFile.getData(currentDataAddress.value());
+        currentDataAddress = dataChunk->getNextChunk();
+        auto &dataChunkRawData = dataChunk->getData();
+        rawData.insert(rawData.end(), dataChunkRawData.begin(),
+                       dataChunkRawData.end());
+      }
+      return rawData;
     }
     return std::nullopt;
   }

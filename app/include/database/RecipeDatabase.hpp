@@ -31,14 +31,13 @@ public:
     std::memcpy(recipeBuffer.data(), recipe.getContents().data(),
                 recipe.getContents().length());
 
-    recipeTree.insert(recipeId, DataChunk<ADDRESS>(recipeBuffer));
+    recipeTree.insert(recipeId, recipeBuffer);
 
     for (const auto &ingredient : ingredients) {
       auto ingredientData = ingredientTree.find(ingredient);
       if (ingredientData) {
       } else {
-        DataChunk<ADDRESS> recipeData({});
-        ingredientTree.insert(ingredient, recipeData);
+        ingredientTree.insert(ingredient, {});
       }
     }
   }

@@ -86,4 +86,5 @@ public:
     writeMetadata();
     return {this, dataChunkAddress};
   }
+  const DataMetadata &getMetadata() const { return metadata; }
 };

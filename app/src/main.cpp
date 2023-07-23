@@ -28,10 +28,10 @@ typedef Ingredient<MAX_STRING_LENGTH> FixedLengthIngredient;
 int main() {
 #define ORDER 500
   FileBackedBPlusTree<FixedLengthIngredient, ADDRESS_TYPE> ingredientTree(
-      "./ingredients.graph_index", "./ingredients.graph_db", CHUNK_SIZE, ORDER,
+      "./ingredients.graph_index", "./ingredients.graph_db", ORDER, CHUNK_SIZE,
       true);
   FileBackedBPlusTree<boost::uuids::uuid, ADDRESS_TYPE> recipeTree(
-      "./recipes.graph_index", "./recipes.graph_db", CHUNK_SIZE, ORDER, true);
+      "./recipes.graph_index", "./recipes.graph_db", ORDER, CHUNK_SIZE, true);
 
   RecipeDatabase<MAX_STRING_LENGTH, ADDRESS_TYPE> recipeDatabase(ingredientTree,
                                                                  recipeTree);
