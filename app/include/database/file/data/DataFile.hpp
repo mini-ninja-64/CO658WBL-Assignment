@@ -7,9 +7,12 @@
 #include "database/file/PullThroughCache.hpp"
 #include "database/file/parsing/common.hpp"
 
+template <typename ADDRESS> class DataChunk;
+template <typename ADDRESS> class LazyDataChunk;
+
 template <typename ADDRESS> class DataFile {
 public:
-  using DataChunkPointer = std::shared_ptr<DataChunk>;
+  using DataChunkPointer = std::shared_ptr<DataChunk<ADDRESS>>;
 
 private:
   std::fstream file;
@@ -23,15 +26,20 @@ private:
   }
 
   DataChunkPointer pullDataChunkFromFile(ADDRESS address) {
-    auto node = Deserialize<DataChunk>::fromStream(address, file);
-    return std::move(std::make_shared<DataChunk>(node));
+    auto node = Deserialize<DataChunk<ADDRESS>, DataChunkContext>::fromStream(
+        address, file, {.dataChunkSize = metadata.dataChunkSize});
+    return std::move(std::make_shared<DataChunk<ADDRESS>>(node));
   }
 
 public:
   static const uint32_t MAGIC_NUMBER = 0x64617461;
 
-  DataFile(const std::filesystem::path &filePath, bool forceOverwrite)
-      : metadata({.numberOfDataChunks = 0}), cache([this](auto address) -> auto{
+  // TODO: Should assert defaultDataChunkSize is > minimum required
+  DataFile(const std::filesystem::path &filePath, bool forceOverwrite,
+           uint32_t defaultDataChunkSize)
+      : metadata(
+            {.numberOfDataChunks = 0, .dataChunkSize = defaultDataChunkSize}),
+        cache([this](auto address) -> auto{
           return this->pullDataChunkFromFile(address);
         }) {
     const bool write = !exists(filePath) || forceOverwrite;
@@ -61,14 +69,17 @@ public:
     insertionPosition = file.tellg();
   }
 
-  std::shared_ptr<DataChunk> getData(ADDRESS address) {
+  std::shared_ptr<DataChunk<ADDRESS>> getData(ADDRESS address) {
     return cache.fetch(address);
   }
 
-  LazyDataChunk<ADDRESS> insertData(std::shared_ptr<DataChunk> dataChunk) {
+  LazyDataChunk<ADDRESS>
+  insertData(std::shared_ptr<DataChunk<ADDRESS>> dataChunk) {
     const auto dataChunkAddress = static_cast<ADDRESS>(insertionPosition);
     insertionPosition =
-        Serialize<DataChunk>::toStream(*dataChunk, dataChunkAddress, file);
+        Serialize<DataChunk<ADDRESS>, DataChunkContext>::toStream(
+            *dataChunk, dataChunkAddress, file,
+            {.dataChunkSize = metadata.dataChunkSize});
     cache.populate(dataChunkAddress, dataChunk);
 
     metadata.numberOfDataChunks++;

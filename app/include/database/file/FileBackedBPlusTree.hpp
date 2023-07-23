@@ -138,16 +138,18 @@ private:
 public:
   FileBackedBPlusTree(const std::filesystem::path &indexFilePath,
                       const std::filesystem::path &dataFilePath,
-                      size_t defaultOrder, bool forceOverwrite)
+                      uint32_t defaultChunkSize, size_t defaultOrder,
+                      bool forceOverwrite)
       : indexFile(indexFilePath, forceOverwrite, defaultOrder),
-        dataFile(dataFilePath, forceOverwrite) {
+        dataFile(dataFilePath, forceOverwrite, defaultChunkSize) {
     indexFile.getRootNode().get();
   }
 
-  void insert(const K &key, DataChunk dataChunk) {
+  void insert(const K &key, DataChunk<ADDRESS> dataChunk) {
     auto [parent, leaf] = findParentAndLeaf(key);
 
-    auto dataPointer = std::make_shared<DataChunk>(std::move(dataChunk));
+    auto dataPointer =
+        std::make_shared<DataChunk<ADDRESS>>(std::move(dataChunk));
     const auto newData = dataFile.insertData(std::move(dataPointer));
 
     auto leafPointer =

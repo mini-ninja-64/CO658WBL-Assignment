@@ -11,7 +11,7 @@
 
 #ifndef TESTING
 
-#define KEY_TYPE uint32_t
+#define CHUNK_SIZE 4096
 #define ADDRESS_TYPE uint32_t
 
 #define ENTRIES_COUNT 10000000
@@ -28,11 +28,13 @@ typedef Ingredient<MAX_STRING_LENGTH> FixedLengthIngredient;
 int main() {
 #define ORDER 500
   FileBackedBPlusTree<FixedLengthIngredient, ADDRESS_TYPE> ingredientTree(
-      "./ingredients.graph_index", "./ingredients.graph_db", ORDER, true);
+      "./ingredients.graph_index", "./ingredients.graph_db", CHUNK_SIZE, ORDER,
+      true);
   FileBackedBPlusTree<boost::uuids::uuid, ADDRESS_TYPE> recipeTree(
-      "./recipes.graph_index", "./recipes.graph_db", ORDER, true);
+      "./recipes.graph_index", "./recipes.graph_db", CHUNK_SIZE, ORDER, true);
 
-  RecipeDatabase<MAX_STRING_LENGTH> recipeDatabase(ingredientTree, recipeTree);
+  RecipeDatabase<MAX_STRING_LENGTH, ADDRESS_TYPE> recipeDatabase(ingredientTree,
+                                                                 recipeTree);
 
   FixedLengthIngredient peppers("peppers");
   FixedLengthIngredient rice("rice");

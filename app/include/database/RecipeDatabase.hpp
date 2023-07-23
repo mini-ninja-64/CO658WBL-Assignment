@@ -10,20 +10,20 @@
 
 #include "utils/bitwise.hpp"
 
-template <size_t RECIPE_NAME_LENGTH> class RecipeDatabase {
+template <size_t MAX_LENGTH, typename ADDRESS> class RecipeDatabase {
 private:
-  FileBackedBPlusTree<Ingredient<RECIPE_NAME_LENGTH>, uint32_t> ingredientTree;
-  FileBackedBPlusTree<boost::uuids::uuid, uint32_t> recipeTree;
+  FileBackedBPlusTree<Ingredient<MAX_LENGTH>, ADDRESS> ingredientTree;
+  FileBackedBPlusTree<boost::uuids::uuid, ADDRESS> recipeTree;
   boost::uuids::random_generator uuidGenerator{};
 
 public:
-  RecipeDatabase(FileBackedBPlusTree<Ingredient<RECIPE_NAME_LENGTH>, uint32_t>
-                     &ingredientTree,
-                 FileBackedBPlusTree<boost::uuids::uuid, uint32_t> &recipeTree)
+  RecipeDatabase(
+      FileBackedBPlusTree<Ingredient<MAX_LENGTH>, ADDRESS> &ingredientTree,
+      FileBackedBPlusTree<boost::uuids::uuid, ADDRESS> &recipeTree)
       : ingredientTree(std::move(ingredientTree)),
         recipeTree(std::move(recipeTree)) {}
 
-  void addRecipe(const std::vector<Ingredient<RECIPE_NAME_LENGTH>> &ingredients,
+  void addRecipe(const std::vector<Ingredient<MAX_LENGTH>> &ingredients,
                  const Recipe &recipe) {
     auto recipeId = uuidGenerator();
 
@@ -31,19 +31,21 @@ public:
     std::memcpy(recipeBuffer.data(), recipe.getContents().data(),
                 recipe.getContents().length());
 
-    recipeTree.insert(recipeId, DataChunk(recipeBuffer));
+    recipeTree.insert(recipeId, DataChunk<ADDRESS>(recipeBuffer));
 
     for (const auto &ingredient : ingredients) {
       auto ingredientData = ingredientTree.find(ingredient);
       if (ingredientData) {
       } else {
-        DataChunk recipeData({});
+        DataChunk<ADDRESS> recipeData({});
         ingredientTree.insert(ingredient, recipeData);
       }
     }
   }
 
-  std::vector<Recipe> getRecipes(uint32_t ingredientId) { return {}; }
+  std::vector<Recipe> getRecipes(const Ingredient<MAX_LENGTH> &ingredient) {
+    return {};
+  }
 };
 
 template <> struct Serialize<boost::uuids::uuid> {
