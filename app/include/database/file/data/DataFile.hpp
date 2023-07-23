@@ -5,6 +5,7 @@
 #include "database/file/parsing/common.hpp"
 #include "DataMetadata.hpp"
 #include "DataChunk.hpp"
+#include "LazyDataChunk.hpp"
 
 template<typename ADDRESS>
 class DataFile {
@@ -14,6 +15,12 @@ private:
     std::fstream file;
     DataMetadata metadata;
     PullThroughCache<ADDRESS, DataChunkPointer, 100> cache;
+    std::streampos insertionPosition;
+
+    void writeMetadata() {
+        constexpr auto metadataPosition = Serialize<DatabaseFileHeader>::length;
+        Serialize<DataMetadata>::toStream(metadata, metadataPosition, file);
+    }
 
     DataChunkPointer pullDataChunkFromFile(ADDRESS address) {
         auto node = Deserialize<DataChunk>::fromStream(address, file);
@@ -36,7 +43,6 @@ public:
         file = std::fstream(filePath, streamConfig);
 
         if (write) {
-            //
             DatabaseFileHeader header = { MAGIC_NUMBER, 1 };
             auto pointer = Serialize<DatabaseFileHeader>::toStream(header, 0, file);
             Serialize<DataMetadata>::toStream(metadata, pointer, file);
@@ -49,9 +55,21 @@ public:
             auto metadataPosition = Deserialize<DatabaseFileHeader>::length;
             metadata = Deserialize<DataMetadata>::fromStream(metadataPosition, file);
         }
+        file.seekg(0, std::ios_base::end);
+        insertionPosition = file.tellg();
     }
 
     std::shared_ptr<DataChunk> getData(ADDRESS address) {
         return cache.fetch(address);
+    }
+
+    LazyDataChunk<ADDRESS> insertData(std::shared_ptr<DataChunk> dataChunk) {
+        const auto dataChunkAddress =  static_cast<ADDRESS>(insertionPosition);
+        insertionPosition = Serialize<DataChunk>::toStream(*dataChunk, dataChunkAddress, file);
+        cache.populate(dataChunkAddress, dataChunk);
+
+        metadata.numberOfDataChunks++;
+        writeMetadata();
+        return {this, dataChunkAddress};
     }
 };

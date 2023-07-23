@@ -1,22 +1,20 @@
 #pragma once
 
 #include <cstddef>
+#include <cstring>
 #include <cstdint>
-#include <memory>
+#include <vector>
 #include <span>
 
 #include "database/file/parsing/common.hpp"
 
 class DataChunk {
 private:
-    const size_t length;
-    std::shared_ptr<uint8_t[]> data;
+    std::vector<uint8_t> data;
 public:
-    DataChunk(size_t length, std::unique_ptr<uint8_t[]> data);
-    DataChunk(size_t length, std::shared_ptr<uint8_t[]> data);
+    explicit DataChunk(const std::vector<uint8_t>& data);
 
-    [[nodiscard]] std::size_t getLength() const;
-    [[nodiscard]] std::shared_ptr<uint8_t[]> getData() const;
+    [[nodiscard]] const std::vector<uint8_t>& getData() const;
 };
 
 template <>

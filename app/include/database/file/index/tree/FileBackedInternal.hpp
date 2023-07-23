@@ -4,24 +4,31 @@
 
 template<typename K, typename ADDRESS>
 class FileBackedInternal : public FileBackedNode<K, ADDRESS> {
+    template<typename K_FRIEND, typename ADDRESS_FRIEND>
+    friend LazyNode<K_FRIEND, ADDRESS_FRIEND> splitRight(LazyNode<K_FRIEND, ADDRESS_FRIEND> leafToSplit, size_t splitIndex);
+
 private:
     std::vector<ADDRESS> childrenAddresses;
 
 public:
-    explicit FileBackedInternal(IndexFile<K, ADDRESS> &indexFile) :
+    explicit FileBackedInternal(IndexFile<K, ADDRESS>* indexFile) :
             FileBackedNode<K, ADDRESS>(indexFile, {}),
             childrenAddresses({}) {}
 
-    FileBackedInternal(IndexFile<K, ADDRESS> &indexFile,
-        const std::vector<K>& records,
-        std::optional<ADDRESS> parent,
-        const std::vector<ADDRESS>& childrenAddresses) :
-        FileBackedNode<K, ADDRESS>(indexFile, records, parent),
-        childrenAddresses(childrenAddresses) {}
+    FileBackedInternal(IndexFile<K, ADDRESS>* indexFile,
+                       const std::vector<K>& records,
+                       std::optional<ADDRESS> parent,
+                       const std::vector<ADDRESS>& childrenAddresses) :
+            FileBackedNode<K, ADDRESS>(indexFile, records, parent),
+            childrenAddresses(childrenAddresses) {}
 
-    FileBackedInternal(ADDRESS leftChild, const K& separator, ADDRESS rightChild) :
-            FileBackedNode<K, ADDRESS>({separator}),
+    FileBackedInternal(IndexFile<K, ADDRESS>* indexFile,
+                       ADDRESS leftChild,
+                       const K& separator,
+                       ADDRESS rightChild) :
+            FileBackedNode<K, ADDRESS>(indexFile, {separator}),
             childrenAddresses({leftChild, rightChild}) {}
+
     [[nodiscard]] virtual NodeType getNodeType() const {
         return NodeType::Internal;
     }
@@ -30,22 +37,21 @@ public:
         return childrenAddresses;
     }
 //
-//    const std::vector<LazyNode<K,ADDRESS>>& getChildren() const {
-//        return childrenAddresses;
-//    }
+    const LazyNode<K,ADDRESS> getChild(size_t index) const {
+        return { this->indexFile, childrenAddresses[index] };
+    }
 
-//    // Find the next child based on the provided key
-//    LazyChildNode next(const KEY_TYPE& key) {
-//        auto nextIndex = this->insertableLocation(key);
-//        return children[nextIndex];
-//    }
-//
-//    void addChild(const KEY_TYPE& childKey, LazyChildNode childNode) {
-//        auto insertIndex = this->insertableLocation(childKey);
-//        this->records.insert(this->records.begin() + insertIndex, childKey);
-//        this->children.insert(this->children.begin() + insertIndex + 1, childNode);
-//        childNode->setParent(this);
-//    }
+    // Find the next child based on the provided key
+    LazyNode<K, ADDRESS> next(const K& key) {
+        auto nextIndex = this->insertableLocation(key);
+        return { this->indexFile, childrenAddresses[nextIndex] };
+    }
+
+    void addChild(const K& childKey, ADDRESS childAddress) {
+        auto insertIndex = this->insertableLocation(childKey);
+        this->records.insert(this->records.begin() + insertIndex, childKey);
+        this->childrenAddresses.insert(this->childrenAddresses.begin() + insertIndex + 1, childAddress);
+    }
     /*
      * Split the internal Node to the right
      * creates and returns a new leaf which takes the records from the right hand side of the provided split index

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+
 template<typename T>
 std::string joinString(std::span<T> elements, const std::string& delimiter) {
     std::string concatenatedString;

@@ -66,7 +66,7 @@ std::optional<T> zeroIsOptionalEmpty(T value) {
 
 template<typename K, typename ADDRESS>
 struct DeserializeGraphContext {
-    IndexFile<K, ADDRESS>& indexFile;
+    IndexFile<K, ADDRESS>* indexFile;
     size_t order;
 };
 
@@ -195,8 +195,8 @@ struct Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext> {
             }
                 break;
             case NodeType::Internal: {
-                [[maybe_unused]] auto internalNode = static_cast<const FileBackedInternal<K, ADDRESS>&>(node);
-                serializeFixedLengthElementsToBuffer(bufferSpan, bufferPosition, internalNode.getChildrenAddresses(), context.order + 1);
+                [[maybe_unused]] auto internalNode = static_cast<const FileBackedInternal<K, ADDRESS>*>(&node);
+                serializeFixedLengthElementsToBuffer(bufferSpan, bufferPosition, internalNode->getChildrenAddresses(), context.order + 1);
             }
                 break;
         }
@@ -205,6 +205,6 @@ struct Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext> {
         fileStream.write(reinterpret_cast<char *>(buffer), nodeSize);
         delete[] buffer;
 
-        return nodeSize;
+        return position + std::streamoff(nodeSize);
     }
 };

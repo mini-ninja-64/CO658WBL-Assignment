@@ -9,27 +9,32 @@
 #include "utils/bitwise.hpp"
 
 static constexpr size_t indexMetadataSize = (32 + 32)/8;
+template <typename ADDRESS>
 struct IndexMetadata {
     uint32_t graphOrder;
     uint32_t numberOfNodes;
+    ADDRESS rootNode;
 };
 
-template<>
-struct Deserialize<IndexMetadata> {
-    FIXED_LENGTH_DESERIALIZER(IndexMetadata, indexMetadataSize) {
+template <typename ADDRESS>
+struct Deserialize<IndexMetadata<ADDRESS>> {
+    FIXED_LENGTH_DESERIALIZER(IndexMetadata<ADDRESS>, 4 + 4 + Deserialize<ADDRESS>::length) {
         return {
-                UINT8_TO_UINT32(it, 0),
-                UINT8_TO_UINT32(it, 4)
+            .graphOrder = UINT8_TO_UINT32(it, 0),
+            .numberOfNodes = UINT8_TO_UINT32(it, 4),
+            .rootNode = Deserialize<ADDRESS>::fromBytes(it.template subspan<8, Deserialize<ADDRESS>::length>())
         };
     }
 };
 
-template<>
-struct Serialize<IndexMetadata> {
-    FIXED_LENGTH_SERIALIZER(IndexMetadata, indexMetadataSize) {
-        return {
-            UINT32_TO_UINT8(it.graphOrder),
-            UINT32_TO_UINT8(it.numberOfNodes)
-        };
+template <typename ADDRESS>
+struct Serialize<IndexMetadata<ADDRESS>> {
+    FIXED_LENGTH_SERIALIZER(IndexMetadata<ADDRESS>, 4 + 4 + Deserialize<ADDRESS>::length) {
+        std::array<uint8_t, Serialize<IndexMetadata<ADDRESS>>::length> buffer = {0};
+        UINT32_TO_UINT8_ARRAY(buffer, 0, it.graphOrder);
+        UINT32_TO_UINT8_ARRAY(buffer, 4, it.numberOfNodes);
+        auto address = Serialize<ADDRESS>::toBytes(it.rootNode);
+        std::copy(address.begin(), address.end(), buffer.begin() + 8);
+        return std::move(buffer);
     }
 };

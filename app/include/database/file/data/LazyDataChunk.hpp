@@ -6,12 +6,15 @@
 #include "DataFile.hpp"
 
 template<typename ADDRESS>
+class DataFile;
+
+template<typename ADDRESS>
 class LazyDataChunk {
 private:
-    DataFile<ADDRESS>& dataFile;
+    DataFile<ADDRESS>* dataFile;
     const ADDRESS address;
 public:
-    LazyDataChunk(DataFile<ADDRESS>& dataFile, const ADDRESS address) :
+    LazyDataChunk(DataFile<ADDRESS>* dataFile, const ADDRESS address) :
         dataFile(dataFile),
         address(address) {}
 
@@ -20,6 +23,6 @@ public:
     }
 
     std::shared_ptr<DataChunk> get() {
-        return dataFile.get(address);
+        return dataFile->getData(address);
     }
 };

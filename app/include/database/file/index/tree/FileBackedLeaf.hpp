@@ -8,22 +8,25 @@
 
 template<typename K, typename ADDRESS>
 class FileBackedLeaf : public FileBackedNode<K, ADDRESS> {
+    template<typename K_FRIEND, typename ADDRESS_FRIEND>
+    friend LazyNode<K_FRIEND, ADDRESS_FRIEND> splitRight(LazyNode<K_FRIEND, ADDRESS_FRIEND> leafToSplit, size_t splitIndex);
+
 private:
     std::vector<ADDRESS> dataAddresses;
     std::optional<ADDRESS> nextLeaf;
     std::optional<ADDRESS> previousLeaf;
 public:
-    explicit FileBackedLeaf(IndexFile<K, ADDRESS> &indexFile) :
+    explicit FileBackedLeaf(IndexFile<K, ADDRESS>* indexFile) :
         FileBackedNode<K, ADDRESS>(indexFile, {}),
         dataAddresses({}) {}
 
-    FileBackedLeaf(IndexFile<K, ADDRESS> &indexFile,
+    FileBackedLeaf(IndexFile<K, ADDRESS>* indexFile,
                    const std::vector<K>& records,
                    const std::vector<ADDRESS>& dataAddresses) :
             FileBackedNode<K, ADDRESS>(indexFile, records),
             dataAddresses(dataAddresses) {}
 
-    FileBackedLeaf(IndexFile<K, ADDRESS> &indexFile,
+    FileBackedLeaf(IndexFile<K, ADDRESS>* indexFile,
                    const std::vector<K>& records,
                    std::optional<ADDRESS> parent,
                    const std::vector<ADDRESS> &dataAddresses,
@@ -44,7 +47,7 @@ public:
 
     [[nodiscard]] std::optional<LazyNode<K,ADDRESS>> getNextNode() const {
         if(nextLeaf)
-            return LazyNode<K, ADDRESS>(FileBackedNode<K, ADDRESS>::indexFile, nextLeaf.value());
+            return LazyNode<K, ADDRESS>(this->indexFile, nextLeaf.value());
         return std::nullopt;
     };
 
@@ -54,11 +57,12 @@ public:
         return std::nullopt;
     };
 
-//    void insertOrdered(const K& key, const V& value) {
-//        auto insertIndex = this->insertableLocation(key);
-//        this->records.insert(this->records.begin() + insertIndex, key);
-//        values.insert(this->values.begin() + insertIndex, value);
-//    }
+    void insertOrdered(const K& key, const ADDRESS& value) {
+        auto insertIndex = this->insertableLocation(key);
+        this->records.insert(this->records.begin() + insertIndex, key);
+        dataAddresses.insert(this->dataAddresses.begin() + insertIndex, value);
+    }
+
 //    std::optional<VALUE_TYPE> remove(const KEY_TYPE& key) {
 //        auto recordIndex = this->indexOf(key);
 //        if(!recordIndex.has_value()) return std::nullopt; // Key is not present, nothing to do except return early

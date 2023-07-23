@@ -10,6 +10,7 @@
 #include "FileBackedLeaf.hpp"
 #include "FileBackedInternal.hpp"
 #include "types.hpp"
+#include "friends.hpp"
 
 // Pre-declare required classes to prevent circular includes
 template<typename K, typename ADDRESS>
@@ -19,10 +20,11 @@ class LazyNode;
 
 template<typename K, typename ADDRESS>
 class FileBackedNode {
-    friend LazyNode<K, ADDRESS> splitRight(LazyNode<K, ADDRESS> leafToSplit, size_t splitIndex);
+    template<typename K_FRIEND, typename ADDRESS_FRIEND>
+    friend LazyNode<K_FRIEND, ADDRESS_FRIEND> splitRight(LazyNode<K_FRIEND, ADDRESS_FRIEND> leafToSplit, size_t splitIndex);
 //    friend LazyNode<K, ADDRESS> splitLeft(LazyNode<K, ADDRESS> leafToSplit, size_t splitIndex);
 protected:
-    IndexFile<K, ADDRESS>& indexFile;
+    IndexFile<K, ADDRESS>* indexFile;
     std::vector<K> records;
 
     std::optional<ADDRESS> parent;
@@ -71,12 +73,12 @@ protected:
     }
 
 public:
-    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, const std::vector<K> &records) :
+    FileBackedNode(IndexFile<K, ADDRESS>* indexFile, const std::vector<K> &records) :
         indexFile(indexFile),
         records(records),
         parent(std::nullopt) {}
 
-    FileBackedNode(IndexFile<K, ADDRESS>& indexFile, const std::vector<K> &records, std::optional<ADDRESS> parent) :
+    FileBackedNode(IndexFile<K, ADDRESS>* indexFile, const std::vector<K> &records, std::optional<ADDRESS> parent) :
         indexFile(indexFile),
         records(records),
         parent(parent) {}
@@ -85,13 +87,13 @@ public:
 
     [[nodiscard]] virtual NodeType getNodeType() const = 0;
 
-    void setParent(const ADDRESS& newAddress) {
-        parent = newAddress;
-    }
-
     std::optional<LazyNode<K, ADDRESS>> getParent() const {
         if(parent) return LazyNode<K, ADDRESS>{indexFile, parent.value()};
         return std::nullopt;
+    }
+
+    void setParentAddress(const std::optional<ADDRESS>& newParentAddress) {
+        FileBackedNode::parent = newParentAddress;
     }
 
     const std::vector<K> &getRecords() const {

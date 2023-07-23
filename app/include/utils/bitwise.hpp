@@ -9,3 +9,8 @@
                                 (uint8_t) (number >> 16) , \
                                 (uint8_t) (number >> 8)  , \
                                 (uint8_t) (number >> 0)
+
+#define UINT32_TO_UINT8_ARRAY(array, offset, number) array[offset]     = (uint8_t) (number >> 24); \
+                                                     array[offset + 1] = (uint8_t) (number >> 16); \
+                                                     array[offset + 2] = (uint8_t) (number >> 8);  \
+                                                     array[offset + 3] = (uint8_t) (number >> 0)
