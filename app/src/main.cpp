@@ -17,10 +17,6 @@
 
 #define ENTRIES_COUNT 10000000
 
-#include "database/b_plus_tree/Internal.hpp"
-#include "database/b_plus_tree/Leaf.hpp"
-#include "database/b_plus_tree/Node.hpp"
-
 auto now = std::chrono::duration_cast<std::chrono::seconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
