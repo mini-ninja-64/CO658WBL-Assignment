@@ -1,4 +1,3 @@
 #pragma once
 
-template <typename T>
-struct TypeTag{};
+template <typename T> struct TypeTag {};
