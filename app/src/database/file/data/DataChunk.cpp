@@ -17,8 +17,7 @@ DataChunk Deserialize<DataChunk>::fromStream(std::streampos position,
   // TODO: check read lengths
   const auto dataChunkLength = UINT8_TO_UINT32(rawDataChunkLength, 0);
 
-  std::vector<uint8_t> dataBuffer;
-  dataBuffer.reserve(dataChunkLength);
+  std::vector<uint8_t> dataBuffer(dataChunkLength);
   fileStream.read(reinterpret_cast<char *>(dataBuffer.data()), dataChunkLength);
   // TODO: check read lengths
 
@@ -37,9 +36,10 @@ std::streampos Serialize<DataChunk>::toStream(const DataChunk &dataChunk,
                    rawDataChunkLength.size());
   bufferPosition += rawDataChunkLength.size();
 
+  auto rawDataLength = static_cast<std::streamoff>(dataChunk.getData().size());
   fileStream.write(reinterpret_cast<const char *>(dataChunk.getData().data()),
-                   dataChunk.getData().size());
-  bufferPosition += dataChunk.getData().size();
+                   rawDataLength);
+  bufferPosition += rawDataLength;
 
   return bufferPosition;
 }

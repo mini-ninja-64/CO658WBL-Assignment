@@ -47,8 +47,10 @@ concept FixedLengthSerializable =
     std::array<uint8_t, LENGTH> buffer = {0};                                  \
     fileStream.seekg(position);                                                \
     fileStream.read(reinterpret_cast<char *>(buffer.data()), LENGTH);          \
-    if (fileStream.gcount() != buffer.size())                                  \
-      throw std::range_error("Filestream ended unexpectedly");                 \
+    auto readBytes = fileStream.gcount();                                      \
+    if (readBytes < 0 ||                                                       \
+        readBytes != static_cast<std::streampos>(buffer.size()))               \
+      throw std::range_error("Filestream was incorrect length");               \
     return fromBytes(buffer);                                                  \
   }                                                                            \
   static TYPE fromBytes([[maybe_unused]] std::span<uint8_t, length> it)

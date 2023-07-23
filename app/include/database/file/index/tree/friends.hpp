@@ -29,7 +29,9 @@ template <typename K, typename ADDRESS>
         leftInternal->childrenAddresses.end()};
     for (auto &childAddress : rightChildren) {
       auto lazyChild = LazyNode<K, ADDRESS>{indexFile, childAddress};
-      lazyChild.get()->setParentAddress(indexFile->getNextNodeAddress());
+      auto child = lazyChild.get();
+      child->setParentAddress(indexFile->getNextNodeAddress());
+      indexFile->saveNode(lazyChild.getAddress(), std::move(child));
     }
     rightNodePointer = std::make_shared<FileBackedInternal<K, ADDRESS>>(
         indexFile,

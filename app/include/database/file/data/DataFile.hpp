@@ -24,7 +24,7 @@ private:
 
   DataChunkPointer pullDataChunkFromFile(ADDRESS address) {
     auto node = Deserialize<DataChunk>::fromStream(address, file);
-    return std::make_shared<DataChunk>(node);
+    return std::move(std::make_shared<DataChunk>(node));
   }
 
 public:

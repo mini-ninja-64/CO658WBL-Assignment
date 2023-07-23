@@ -28,8 +28,7 @@ private:
     std::optional<LazyNode<K, ADDRESS>> leaf;
     do {
       LazyNode<K, ADDRESS> child =
-          std::dynamic_pointer_cast<FileBackedInternal<K, ADDRESS>>(
-              parent.get())
+          std::static_pointer_cast<FileBackedInternal<K, ADDRESS>>(parent.get())
               ->next(key);
       if (child.get()->getNodeType() == NodeType::Leaf)
         leaf = child;
@@ -86,10 +85,10 @@ private:
     auto childNodePointer = childNode.get();
 
     childNodePointer->setParentAddress(parentNode.getAddress());
-    indexFile.saveNode(childNode.getAddress(), std::move(childNode.get()));
+    indexFile.saveNode(childNode.getAddress(), childNodePointer);
 
     parentNodePointer->addChild(propagatedKey, childNode.getAddress());
-    indexFile.saveNode(parentNode.getAddress(), std::move(parentNode.get()));
+    indexFile.saveNode(parentNode.getAddress(), parentNodePointer);
 
     if (parentNodePointer->getRecords().size() >=
         indexFile.getMetadata().graphOrder) {
@@ -122,9 +121,9 @@ private:
 
 public:
   FileBackedBPlusTree(const std::filesystem::path &indexFilePath,
-                      const std::filesystem::path &dataFilePath, size_t order,
-                      bool forceOverwrite)
-      : indexFile(indexFilePath, forceOverwrite, order),
+                      const std::filesystem::path &dataFilePath,
+                      size_t defaultOrder, bool forceOverwrite)
+      : indexFile(indexFilePath, forceOverwrite, defaultOrder),
         dataFile(dataFilePath, forceOverwrite) {
     indexFile.getRootNode().get();
   }
@@ -138,6 +137,7 @@ public:
     auto leafPointer =
         std::static_pointer_cast<FileBackedLeaf<K, ADDRESS>>(leaf.get());
     leafPointer->insertOrdered(key, newData.getAddress());
+    indexFile.saveNode(leaf.getAddress(), leafPointer);
 
     if (leafPointer->getRecords().size() >=
         indexFile.getMetadata().graphOrder) {
@@ -175,7 +175,7 @@ public:
 
   LazyNode<K, ADDRESS> getRoot() { return indexFile.getRootNode(); }
 
-  std::optional<LazyDataChunk<ADDRESS>> find(K key) {
+  [[nodiscard]] std::optional<LazyDataChunk<ADDRESS>> find(K key) {
     auto [parent, leaf] = findParentAndLeaf(key);
     auto recordIndex = leaf.get()->indexOf(key);
     if (recordIndex) {
@@ -194,5 +194,12 @@ public:
     graphVizDoc += recurseChildrenGraphViz(root);
     graphVizDoc += "}";
     return graphVizDoc;
+  }
+
+  [[nodiscard]] const IndexFile<K, ADDRESS> &getIndexFile() const {
+    return indexFile;
+  }
+  [[nodiscard]] const DataFile<ADDRESS> &getDataFile() const {
+    return dataFile;
   }
 };

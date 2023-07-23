@@ -33,6 +33,6 @@ template <typename ADDRESS> struct Serialize<IndexMetadata<ADDRESS>> {
     UINT32_TO_UINT8_ARRAY(buffer, 4, it.numberOfNodes);
     auto address = Serialize<ADDRESS>::toBytes(it.rootNode);
     std::copy(address.begin(), address.end(), buffer.begin() + 8);
-    return std::move(buffer);
+    return buffer;
   }
 };

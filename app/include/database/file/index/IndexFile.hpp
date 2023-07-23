@@ -30,7 +30,7 @@ private:
                    {.indexFile = this, .order = metadata.graphOrder});
     // Convert our initially loaded unique smart pointer,
     // to a shared smart pointer for storage in the cache
-    return std::move(node);
+    return node;
   }
 
 public:
@@ -112,21 +112,4 @@ public:
     metadata.rootNode = address;
     writeMetadata();
   }
-
-  //    std::shared_ptr<FileBackedNode<K, ADDRESS>> getNode(ADDRESS address) {
-  //        return std::make_shared(Deserialize<FileBackedNode<K,
-  //        ADDRESS>>::fromStream(address, file));
-  //    }
-  //
-  //    void writeNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node)
-  //    {
-  //        Serialize<FileBackedNode<K, ADDRESS>>::toStream(node, address,
-  //        file);
-  //    }
-
-  //
-  //    void updateNode(ADDRESS address, const FileBackedNode<K, ADDRESS>& node)
-  //    {}
-  //
-  //    std::shared_ptr<FileBackedNode<K, ADDRESS>> readNode(ADDRESS address) {}
 };
