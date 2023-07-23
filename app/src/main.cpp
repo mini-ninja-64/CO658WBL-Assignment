@@ -29,7 +29,7 @@ std::uniform_int_distribution<uint32_t> randomEntry(0, ENTRIES_COUNT);
 std::uniform_int_distribution<uint32_t> randomValue(0, 0xFFFFFFFF);
 
 int main() {
-#define ORDER 500
+#define ORDER 509
   FileBackedBPlusTree<KEY_TYPE, ADDRESS_TYPE> testTree(
       "./test.graph_index", "./test.graph_db", ORDER, true);
 
@@ -43,6 +43,10 @@ int main() {
       std::cout << "50%" << std::endl;
     if (i == 3 * (ENTRIES_COUNT / 4))
       std::cout << "75%" << std::endl;
+    if (!testTree.find(i)) {
+      std::cout << testTree.renderGraphVizView() << std::endl;
+      std::cout << "broken" << std::endl;
+    }
   }
   std::cout << "data primed" << std::endl;
 
@@ -59,6 +63,8 @@ int main() {
       std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
   auto milliseconds =
       std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+
+  std::cout << testTree.renderGraphVizView() << std::endl;
 
   std::cout << "estimated node count: " << ENTRIES_COUNT / ((ORDER - 2) / 2)
             << std::endl;

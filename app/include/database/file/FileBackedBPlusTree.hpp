@@ -40,19 +40,35 @@ private:
   }
 
   std::string recurseChildrenGraphViz(LazyNode<K, ADDRESS> &node) {
+    auto getNodeName = [](LazyNode<K, ADDRESS> lazyNode) -> std::string {
+      return "node" + std::to_string(lazyNode.getAddress());
+    };
+    std::string graphVizCode;
+
     auto records = node.get()->getRecords();
     std::string labelText = "Records: [ " + joinString<K>(records, ", ") + " ]";
+
     if (node.get()->getNodeType() == NodeType::Leaf) {
-      auto dataAddresses =
-          std::static_pointer_cast<FileBackedLeaf<K, ADDRESS>>(node.get())
-              ->getDataAddresses();
+      auto leafPointer =
+          std::static_pointer_cast<FileBackedLeaf<K, ADDRESS>>(node.get());
+      auto dataAddresses = leafPointer->getDataAddresses();
       labelText +=
           "\nValues: { " + joinString<ADDRESS>(dataAddresses, ", ") + " }";
+      auto nextNode = leafPointer->getNextNode();
+      if (nextNode)
+        graphVizCode += getNodeName(node) + " -> " +
+                        getNodeName(nextNode.value()) +
+                        "[color=\"orange\"; constraint=false;]\n";
+      auto previousNode = leafPointer->getPreviousNode();
+      if (previousNode)
+        graphVizCode += getNodeName(node) + " -> " +
+                        getNodeName(previousNode.value()) +
+                        "[color=\"green\"; constraint=false;]\n";
     }
 
     auto nodeName = "node" + std::to_string(node.getAddress());
     std::string labelledNode = nodeName + " [ label=\"" + labelText + "\" ];\n";
-    std::string graphVizCode = labelledNode;
+    graphVizCode += labelledNode;
 
     if (node.get()->getParent()) {
       auto parentNodeName =
