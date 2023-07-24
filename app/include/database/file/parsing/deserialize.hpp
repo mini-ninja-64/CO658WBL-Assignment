@@ -24,7 +24,7 @@ concept Deserializable =
       { Deserialize<T>{}.fromStream(position, fileStream) } -> std::same_as<T>;
     } || requires(std::streampos position, std::fstream &fileStream,
                   CONTEXT context) {
-           {
-             Deserialize<T>::fromStream(position, fileStream, context)
-             } -> std::same_as<T>;
-         };
+      {
+        Deserialize<T>::fromStream(position, fileStream, context)
+      } -> std::same_as<T>;
+    };

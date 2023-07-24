@@ -14,10 +14,10 @@ concept FixedLength =
       { Serialize<T>::length } -> std::same_as<size_t>;
       {
         Serialize<T>::toBytes()
-        } -> std::same_as<std::array<uint8_t, Serialize<T>::length>>;
+      } -> std::same_as<std::array<uint8_t, Serialize<T>::length>>;
       {
         Deserialize<T>::fromBytes(position, deserializableBuffer)
-        } -> std::same_as<T>;
+      } -> std::same_as<T>;
     };
 
 #define FIXED_LENGTH_SERIALIZER(TYPE, LENGTH)                                  \
@@ -33,13 +33,12 @@ concept FixedLength =
   static std::array<uint8_t, length> toBytes([[maybe_unused]] const TYPE &it)
 
 template <typename T>
-concept FixedLengthSerializable =
-    requires(const T &element) {
-      { Serialize<T>::length } -> std::same_as<size_t>;
-      {
-        Serialize<T>::toBytes(element)
-        } -> std::same_as<std::array<uint8_t, Serialize<T>::length>>;
-    } && Serializable<T, void>;
+concept FixedLengthSerializable = requires(const T &element) {
+  { Serialize<T>::length } -> std::same_as<size_t>;
+  {
+    Serialize<T>::toBytes(element)
+  } -> std::same_as<std::array<uint8_t, Serialize<T>::length>>;
+} && Serializable<T, void>;
 
 #define FIXED_LENGTH_DESERIALIZER(TYPE, LENGTH)                                \
   static constexpr size_t length = LENGTH;                                     \

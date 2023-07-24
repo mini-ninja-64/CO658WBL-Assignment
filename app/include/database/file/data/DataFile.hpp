@@ -39,7 +39,7 @@ public:
            uint32_t defaultDataChunkSize)
       : metadata(
             {.numberOfDataChunks = 0, .dataChunkSize = defaultDataChunkSize}),
-        cache([this](auto address) -> auto{
+        cache([this](auto address) -> auto {
           return this->pullDataChunkFromFile(address);
         }) {
     const bool write = !exists(filePath) || forceOverwrite;
@@ -87,13 +87,10 @@ public:
     return {this, dataChunkAddress};
   }
 
-  void saveData(ADDRESS address, std::shared_ptr<DataChunk<ADDRESS>> dataChunk) {
+  void saveData(ADDRESS address,
+                std::shared_ptr<DataChunk<ADDRESS>> dataChunk) {
     Serialize<DataChunk<ADDRESS>, DataChunkContext>::toStream(
-        *dataChunk,
-        address,
-        file,
-        {.dataChunkSize = metadata.dataChunkSize}
-    );
+        *dataChunk, address, file, {.dataChunkSize = metadata.dataChunkSize});
     cache.populate(address, dataChunk);
   }
 

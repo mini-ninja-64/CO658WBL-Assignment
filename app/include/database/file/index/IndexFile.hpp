@@ -44,7 +44,7 @@ public:
                   // metadata
                   .rootNode = Serialize<DatabaseFileHeader>::length +
                               Serialize<IndexMetadata<ADDRESS>>::length}),
-        cache([this](auto address) -> auto{
+        cache([this](auto address) -> auto {
           return this->pullNodeFromFile(address);
         }) {
     const bool write = !exists(filePath) || forceOverwrite;

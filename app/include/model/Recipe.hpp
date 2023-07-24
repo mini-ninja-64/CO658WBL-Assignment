@@ -8,7 +8,7 @@ class Recipe {
   std::string contents;
 
 public:
-  explicit Recipe(std::string &contents);
+  explicit Recipe(std::string contents);
   explicit Recipe(const char *contents);
   [[nodiscard]] const std::string &getContents() const;
 };

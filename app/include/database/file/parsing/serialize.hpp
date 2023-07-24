@@ -24,11 +24,11 @@ concept Serializable =
              std::fstream &fileStream) {
       {
         Serialize<T, CONTEXT>::toStream(element, position, fileStream)
-        } -> std::same_as<std::streampos>;
+      } -> std::same_as<std::streampos>;
     } ||
     requires(const T &element, std::streampos position,
              std::fstream &fileStream, CONTEXT context) {
       {
         Serialize<T, CONTEXT>::toStream(element, position, fileStream, context)
-        } -> std::same_as<std::streampos>;
+      } -> std::same_as<std::streampos>;
     };

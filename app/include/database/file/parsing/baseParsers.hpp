@@ -1,11 +1,11 @@
 #pragma once
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <span>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
 
 #include "common.hpp"
 #include "utils/bitwise.hpp"
@@ -37,4 +37,3 @@ template <> struct Deserialize<boost::uuids::uuid> {
     return uuid;
   }
 };
-

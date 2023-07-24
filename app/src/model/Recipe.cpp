@@ -1,8 +1,10 @@
 #include "model/Recipe.hpp"
 
+#include <utility>
+
 #include "utils/bitwise.hpp"
 
-Recipe::Recipe(std::string &contents) : contents(std::move(contents)) {}
+Recipe::Recipe(std::string contents) : contents(std::move(contents)) {}
 const std::string &Recipe::getContents() const { return contents; }
 Recipe::Recipe(const char *contents) : contents(contents) {}
 
