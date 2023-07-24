@@ -120,7 +120,6 @@ private:
         auto newRoot = indexFile.insertNode(std::move(newRootPointer));
         indexFile.setRootNode(newRoot.getAddress());
 
-        // TODO: optimize
         parentNodePointer->setParentAddress(newRoot.getAddress());
         auto rightParentPointer = newRightParent.get();
         rightParentPointer->setParentAddress(newRoot.getAddress());
@@ -195,7 +194,6 @@ public:
         auto newRoot = indexFile.insertNode(std::move(newRootPointer));
         indexFile.setRootNode(newRoot.getAddress());
 
-        // TODO: optimize
         leafPointer->setParentAddress(newRoot.getAddress());
         auto rightLeafPointer = rightLeaf.get();
         rightLeafPointer->setParentAddress(newRoot.getAddress());

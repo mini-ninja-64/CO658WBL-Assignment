@@ -55,7 +55,6 @@ public:
     auto ingredientData = ingredientTree.find(ingredient);
     if (ingredientData) {
       std::vector<boost::uuids::uuid> recipeIds;
-      // TODO: check data length divides to uuid
       constexpr auto uuidLength = Deserialize<boost::uuids::uuid>::length;
       for (std::vector<uint8_t>::size_type i = 0; i < ingredientData->size();
            i += uuidLength) {

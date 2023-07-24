@@ -66,8 +66,6 @@ public:
         throw std::domain_error(
             "provided index file has incorrect magic number");
 
-      // TODO: std::streampos smaller than size_t (complier/system/arch
-      // dependent)
       auto indexMetadataPosition = Deserialize<DatabaseFileHeader>::length;
       metadata = Deserialize<IndexMetadata<ADDRESS>>::fromStream(
           indexMetadataPosition, file);
@@ -100,7 +98,6 @@ public:
   NodePointer getNode(ADDRESS address) { return cache.fetch(address); }
 
   ADDRESS getNextNodeAddress() const {
-    // TODO: error check int overflow
     return static_cast<ADDRESS>(insertionPosition);
   }
 

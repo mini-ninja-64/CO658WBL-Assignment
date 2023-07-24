@@ -5,14 +5,13 @@
 #include <optional>
 #include <unordered_map>
 
-// TODO: popularity ranking to know which node to eject for the cache
 template <typename K, typename V, size_t MAX_SIZE> class PullThroughCache {
 private:
   std::unordered_map<K, V> cacheMap;
   std::function<V(const K &)> valuePuller;
 
 public:
-  PullThroughCache(const std::function<V(const K &)> &valuePuller)
+  explicit PullThroughCache(const std::function<V(const K &)> &valuePuller)
       : valuePuller(valuePuller) {}
 
   V fetch(const K &key) {

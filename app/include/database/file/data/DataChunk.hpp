@@ -51,10 +51,8 @@ struct Deserialize<DataChunk<ADDRESS>, DataChunkContext> {
     fileStream.seekg(position);
     fileStream.read(reinterpret_cast<char *>(buffer),
                     std::streamsize(context.dataChunkSize));
-    // TODO: check read lengths
 
     const auto dataBufferLength = UINT8_TO_UINT32(buffer, 0);
-    // TODO: check data buffer length is valid
 
     const ADDRESS nextDataChunkAddress = Deserialize<ADDRESS>::fromBytes(
         std::span<uint8_t, Deserialize<ADDRESS>::length>{
@@ -96,7 +94,6 @@ struct Serialize<DataChunk<ADDRESS>, DataChunkContext> {
     fileStream.seekp(position);
     fileStream.write(reinterpret_cast<char *>(buffer),
                      std::streamsize(context.dataChunkSize));
-    // TODO: check for write failures
     delete[] buffer;
     return position + std::streamoff(context.dataChunkSize);
   }

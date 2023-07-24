@@ -34,7 +34,6 @@ private:
 public:
   static const uint32_t MAGIC_NUMBER = 0x64617461;
 
-  // TODO: Should assert defaultDataChunkSize is > minimum required
   DataFile(const std::filesystem::path &filePath, bool forceOverwrite,
            uint32_t defaultDataChunkSize)
       : metadata(
@@ -60,8 +59,6 @@ public:
         throw std::domain_error(
             "provided index file has incorrect magic number");
 
-      // TODO: std::streampos smaller than size_t (complier/system/arch
-      // dependent)
       auto metadataPosition = Deserialize<DatabaseFileHeader>::length;
       metadata = Deserialize<DataMetadata>::fromStream(metadataPosition, file);
     }

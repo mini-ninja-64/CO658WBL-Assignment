@@ -11,7 +11,7 @@
 #include "database/file/FileBackedBPlusTree.hpp"
 #include "defaultConfig.hpp"
 
-#ifndef TESTING
+#if !defined(TESTING) && !defined(BENCHMARK_DB)
 
 int main() {
   std::cout << "Ingredients tree with order: " << INGREDIENT_ORDER << std::endl;

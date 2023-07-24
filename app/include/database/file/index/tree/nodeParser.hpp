@@ -201,7 +201,6 @@ struct Serialize<FileBackedNode<K, ADDRESS>, SerializeGraphContext> {
     }
 
     // Write records
-    // TODO: check for integer overflow
     bufferPosition = serializeFixedLengthElementToBuffer(
         bufferSpan, bufferPosition,
         static_cast<uint32_t>(node.getRecords().size()));

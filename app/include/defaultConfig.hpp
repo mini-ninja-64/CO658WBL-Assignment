@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/Ingredient.hpp"
 #include "database/file/parsing/baseParsers.hpp"
 
 #define BLOCK_SIZE 4096
