@@ -5,6 +5,8 @@
 
 #include "database/file/FileBackedBPlusTree.hpp"
 
+#include "database/file/parsing/baseParsers.hpp"
+
 #include "model/Ingredient.hpp"
 #include "model/Recipe.hpp"
 
@@ -27,39 +29,44 @@ public:
                  const Recipe &recipe) {
     auto recipeId = uuidGenerator();
 
-    std::vector<uint8_t> recipeBuffer(recipe.getContents().length());
-    std::memcpy(recipeBuffer.data(), recipe.getContents().data(),
-                recipe.getContents().length());
+    std::vector<uint8_t> recipeBuffer(recipe.getContents().begin(), recipe.getContents().end());
 
     recipeTree.insert(recipeId, recipeBuffer);
 
     for (const auto &ingredient : ingredients) {
       auto ingredientData = ingredientTree.find(ingredient);
+        auto uuidBytes = Serialize<boost::uuids::uuid>::toBytes(recipeId);
       if (ingredientData) {
+        std::vector<uint8_t> newIngredientData = ingredientData.value();
+        newIngredientData.insert(newIngredientData.end(), uuidBytes.begin(), uuidBytes.end());
+        ingredientTree.overwriteData(ingredient, newIngredientData);
       } else {
-        ingredientTree.insert(ingredient, {});
+        std::vector<uint8_t> uuidBytesVector(uuidBytes.begin(), uuidBytes.end());
+        ingredientTree.insert(ingredient, uuidBytesVector);
       }
     }
   }
 
-  std::vector<Recipe> getRecipes(const Ingredient<MAX_LENGTH> &ingredient) {
-    return {};
-  }
-};
-
-template <> struct Serialize<boost::uuids::uuid> {
-  FIXED_LENGTH_SERIALIZER(boost::uuids::uuid, 16) {
-    std::array<uint8_t, 16> uuidBuffer{0};
-    std::memcpy(uuidBuffer.data(), it.data, 16);
-    return uuidBuffer;
-  }
-};
-
-template <> struct Deserialize<boost::uuids::uuid> {
-  FIXED_LENGTH_DESERIALIZER(boost::uuids::uuid, 16) {
-    boost::uuids::uuid uuid{};
-    std::memcpy(&uuid, it.data(), 16);
-
-    return uuid;
+  std::optional<std::vector<Recipe>> getRecipes(const Ingredient<MAX_LENGTH>& ingredient) {
+    auto ingredientData = ingredientTree.find(ingredient);
+    if(ingredientData) {
+      std::vector<boost::uuids::uuid> recipeIds;
+      //TODO: check data length divides to uuid
+      constexpr auto uuidLength = Deserialize<boost::uuids::uuid>::length;
+      for (std::vector<uint8_t>::size_type i = 0; i < ingredientData->size(); i+=uuidLength) {
+        std::span<uint8_t, uuidLength> uuidBuffer(ingredientData->data() + i, uuidLength);
+        recipeIds.push_back(Deserialize<boost::uuids::uuid>::fromBytes(uuidBuffer));
+      }
+      std::vector<Recipe> recipes;
+      for (const auto &recipeId : recipeIds) {
+        auto recipeData =  recipeTree.find(recipeId);
+        if(!recipeData) throw std::domain_error("Recipe referenced by ingredient is not present in database");
+        std::string recipeContents(recipeData->begin(), recipeData->end());
+        auto recipe = Recipe(recipeContents);
+        recipes.push_back(recipe);
+      }
+      return recipes;
+    }
+    return std::nullopt;
   }
 };

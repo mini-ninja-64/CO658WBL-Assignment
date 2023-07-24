@@ -35,8 +35,8 @@ public:
   [[nodiscard]] const std::vector<ADDRESS> &getChildrenAddresses() const {
     return childrenAddresses;
   }
-  //
-  const LazyNode<K, ADDRESS> getChild(size_t index) const {
+
+  LazyNode<K, ADDRESS> getChild(size_t index) const {
     return {this->indexFile, childrenAddresses[index]};
   }
 
@@ -52,42 +52,4 @@ public:
     this->childrenAddresses.insert(
         this->childrenAddresses.begin() + insertIndex + 1, childAddress);
   }
-  /*
-   * Split the internal Node to the right
-   * creates and returns a new leaf which takes the records from the right hand
-   * side of the provided split index the existing leaf will be mutated
-   */
-  //    [[nodiscard]] Internal<KEY_TYPE, VALUE_TYPE>* splitRight(size_t
-  //    splitIndex) {
-  //        auto newRightInternal = new Internal<KEY_TYPE, VALUE_TYPE>(
-  //                {this->records.begin() + splitIndex+1, this->records.end()},
-  //                {this->children.begin() + splitIndex+1,
-  //                this->children.end()}
-  //        );
-  //        this->records.erase(this->records.begin() + splitIndex,
-  //        this->records.end()); this->children.erase(this->children.begin() +
-  //        splitIndex + 1, this->children.end()); return newRightInternal;
-  //    }
-  /*
-   * Split the Leaf to the left
-   * creates and returns a new leaf which takes the records from the left hand
-   * side of the provided split index the existing leaf will be mutated
-   */
-  //    [[nodiscard]] Internal<KEY_TYPE, VALUE_TYPE>* splitLeft(size_t
-  //    splitIndex) {
-  //        auto newLeftInternal = new Internal<KEY_TYPE, VALUE_TYPE>(
-  //                {this->records.begin(), this->records.begin() + splitIndex},
-  //                {this->children.begin(), this->children.end()  + splitIndex
-  //                + 1}
-  //        );
-  //        this->records.erase(this->records.begin(), this->records.begin() +
-  //        splitIndex); this->children.erase(this->children.begin(),
-  //        this->children.begin() + splitIndex + 1); return newLeftInternal;
-  //    }
-  //
-  //    void insertOrdered(KEY_TYPE key, VALUE_TYPE value) {
-  //        auto insertIndex = insertableLocation(key);
-  //        this->records.insert(records.begin() + insertIndex, key)
-  //        children.insert(children.begin() + insertIndex, key)
-  //    }
 };

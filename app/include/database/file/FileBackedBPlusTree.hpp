@@ -153,18 +153,21 @@ public:
     // data
     auto numberOfChunksRequired = (data.size() + dataChunkSize) / dataChunkSize;
     ADDRESS firstDataChunk = 0;
-    std::optional<ADDRESS> currentDataChunk = std::nullopt;
     for (std::vector<uint8_t>::size_type i = 0; i < numberOfChunksRequired;
          ++i) {
       auto dataOffset = std::min((i + 1) * dataChunkSize, data.size());
       std::vector<uint8_t> rawData = {data.begin() + (i * dataChunkSize),
                                       data.begin() + dataOffset};
+      std::optional<ADDRESS> nextDataAddress = std::nullopt;
+      // unless we are on the final required node, we can predict that the
+      // next address will be the current insertion position + the chunk size
+      if(i < (numberOfChunksRequired - 1))
+        nextDataAddress = static_cast<ADDRESS>(dataFile.getInsertionPosition()) + dataFile.getMetadata().dataChunkSize;
       auto dataPointer =
-          std::make_shared<DataChunk<ADDRESS>>(rawData, currentDataChunk);
+          std::make_shared<DataChunk<ADDRESS>>(rawData, nextDataAddress);
       const auto newData = dataFile.insertData(std::move(dataPointer));
       if (firstDataChunk == 0)
         firstDataChunk = newData.getAddress();
-      currentDataChunk = newData.getAddress();
     }
 
     auto leafPointer =
@@ -208,7 +211,7 @@ public:
 
   LazyNode<K, ADDRESS> getRoot() { return indexFile.getRootNode(); }
 
-  [[nodiscard]] std::optional<std::vector<uint8_t>> find(K key) {
+  [[nodiscard]] std::optional<std::vector<uint8_t>> find(const K& key) {
     auto [parent, leaf] = findParentAndLeaf(key);
     auto recordIndex = leaf.get()->indexOf(key);
     if (recordIndex) {
@@ -227,6 +230,49 @@ public:
       return rawData;
     }
     return std::nullopt;
+  }
+
+  void overwriteData(const K& key, const std::vector<uint8_t> &data) {
+    auto [parent, leaf] = findParentAndLeaf(key);
+    auto recordIndex = leaf.get()->indexOf(key);
+    if (!recordIndex)throw std::domain_error("provided key could not be found in the tree");
+      const auto dataChunkSize = dataFile.getMetadata().dataChunkSize;
+        // Round up the number of data chunks required to accommodate the provided
+        // data
+        auto numberOfChunksRequired = (data.size() + dataChunkSize) / dataChunkSize;
+
+        auto leafNodePointer =
+            std::static_pointer_cast<FileBackedLeaf<K, ADDRESS>>(leaf.get());
+        std::optional<ADDRESS> currentDataAddress = leafNodePointer->getDataAddresses()[recordIndex.value()];
+
+        for (size_t i = 0; i < currentDataAddress; i++) {
+            auto dataOffset = std::min((i + 1) * dataChunkSize, data.size());
+            std::vector<uint8_t> rawData = {data.begin() + (i * dataChunkSize),
+                                            data.begin() + dataOffset};
+
+            if(currentDataAddress) {
+              // There is already data at this address, so we should overwrite it
+              auto currentDataChunk = dataFile.getData(currentDataAddress.value());
+              auto nextAddress = currentDataChunk->getNextChunk();
+
+              auto dataPointer =
+                  std::make_shared<DataChunk<ADDRESS>>(rawData, nextAddress);
+              dataFile.saveData(currentDataAddress.value(), std::move(dataPointer));
+              currentDataAddress = nextAddress;
+            } else {
+              std::optional<ADDRESS> nextAddress = std::nullopt;
+              // unless we are on the final required node, we can predict that the
+              // next address will be the current insertion position + the chunk size
+              if(i < (numberOfChunksRequired - 1))
+                nextAddress = static_cast<ADDRESS>(dataFile.getInsertionPosition()) + dataFile.getMetadata().dataChunkSize;
+              auto dataPointer =
+                  std::make_shared<DataChunk<ADDRESS>>(rawData, nextAddress);
+              dataFile.insertData(std::move(dataPointer));
+              // current data address will always be empty after an insertion as there is no next node
+              currentDataAddress = std::nullopt;
+            }
+        }
+
   }
 
   [[nodiscard]] std::string renderGraphVizView() {

@@ -38,21 +38,6 @@
  *     : 5 + 3A + O(K + A)
  */
 
-/*
- * Calculating order
- *
- * Take the block size (B) and use it to maximise the order like so:
- *
- * B = 5 + 3A + O(K + A)
- * O = (B - 5 - 3A) / (K + A)
- *
- * Typically modern OS use a block size of 4096
- *
- * So if our DB was using 32-bit addressing with a 32-bit key size
- * the optimal order would be = (4096-5-(3*4)) / (4 + 4) = ~509
- *
- */
-
 template <typename K, typename ADDRESS>
 static size_t fileBackedNodeSize(size_t order) {
   auto keySize = Deserialize<K>::length;

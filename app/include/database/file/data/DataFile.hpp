@@ -86,5 +86,20 @@ public:
     writeMetadata();
     return {this, dataChunkAddress};
   }
+
+  void saveData(ADDRESS address, std::shared_ptr<DataChunk<ADDRESS>> dataChunk) {
+    Serialize<DataChunk<ADDRESS>, DataChunkContext>::toStream(
+        *dataChunk,
+        address,
+        file,
+        {.dataChunkSize = metadata.dataChunkSize}
+    );
+    cache.populate(address, dataChunk);
+  }
+
+  const std::streampos &getInsertionPosition() const {
+    return insertionPosition;
+  }
+
   const DataMetadata &getMetadata() const { return metadata; }
 };
